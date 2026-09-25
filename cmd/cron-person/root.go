@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
 	"github.com/spf13/cobra"
-	"github.com/alexgorbatchev/cron-person-cli/internal/agent"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 )
@@ -84,7 +84,7 @@ func newRootStatusCommand() *cobra.Command {
 				}
 			}
 
-			if agent.IsAgentMode() {
+			if cobrahelptree.IsAgentMode() {
 				fmt.Fprintln(cmd.OutOrStdout(), "version: "+version)
 				fmt.Fprintf(cmd.OutOrStdout(), "tracked_dirs: %d\n", len(records))
 				fmt.Fprintf(cmd.OutOrStdout(), "allowed_dirs: %d\n", allowedCount)

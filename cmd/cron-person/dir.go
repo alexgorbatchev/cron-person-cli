@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
 	"github.com/spf13/cobra"
-	"github.com/alexgorbatchev/cron-person-cli/internal/agent"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 )
@@ -63,7 +63,7 @@ func newDirAllowCommand() *cobra.Command {
 				return fmt.Errorf("allowing directory %s: %w", dir, err)
 			}
 
-			if agent.IsAgentMode() {
+			if cobrahelptree.IsAgentMode() {
 				fmt.Fprintf(cmd.OutOrStdout(), "dir: %s\nstatus: allowed\nhash: %s\n", rec.Dir, rec.Hash)
 				return nil
 			}
@@ -95,7 +95,7 @@ func newDirDenyCommand() *cobra.Command {
 				return fmt.Errorf("denying directory %s: %w", dir, err)
 			}
 
-			if agent.IsAgentMode() {
+			if cobrahelptree.IsAgentMode() {
 				fmt.Fprintf(cmd.OutOrStdout(), "dir: %s\nstatus: denied\n", dir)
 				return nil
 			}
@@ -119,7 +119,7 @@ func newDirListCommand() *cobra.Command {
 
 			records := st.List()
 
-			if agent.IsAgentMode() {
+			if cobrahelptree.IsAgentMode() {
 				for _, rec := range records {
 					status, _, _ := st.Status(rec.Dir)
 					fmt.Fprintf(cmd.OutOrStdout(), "dir: %s\tstatus: %s\thash: %s\n", rec.Dir, status, rec.Hash)
@@ -164,7 +164,7 @@ func newDirCheckCommand() *cobra.Command {
 				return fmt.Errorf("invalid .cronrc syntax: %w", err)
 			}
 
-			if agent.IsAgentMode() {
+			if cobrahelptree.IsAgentMode() {
 				fmt.Fprintf(cmd.OutOrStdout(), "path: %s\ntasks_count: %d\nhash: %s\n", parsed.Path, len(parsed.Tasks), parsed.Hash)
 				return nil
 			}
@@ -203,7 +203,7 @@ func newDirStatusCommand() *cobra.Command {
 				return err
 			}
 
-			if agent.IsAgentMode() {
+			if cobrahelptree.IsAgentMode() {
 				fmt.Fprintf(cmd.OutOrStdout(), "dir: %s\nstatus: %s\n", dir, status)
 				if rec != nil {
 					fmt.Fprintf(cmd.OutOrStdout(), "hash: %s\n", rec.Hash)

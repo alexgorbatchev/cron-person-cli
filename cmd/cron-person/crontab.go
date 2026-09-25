@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
 	"github.com/spf13/cobra"
-	"github.com/alexgorbatchev/cron-person-cli/internal/agent"
 	"github.com/alexgorbatchev/cron-person-cli/internal/crontab"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 )
@@ -44,7 +44,7 @@ func newCrontabSyncCommand() *cobra.Command {
 				return fmt.Errorf("syncing crontab: %w", err)
 			}
 
-			if agent.IsAgentMode() {
+			if cobrahelptree.IsAgentMode() {
 				fmt.Fprintf(cmd.OutOrStdout(), "synced_directories: %d\nstatus: success\n", count)
 				return nil
 			}
@@ -101,7 +101,7 @@ func newCrontabUninstallCommand() *cobra.Command {
 				return fmt.Errorf("uninstalling crontab block: %w", err)
 			}
 
-			if agent.IsAgentMode() {
+			if cobrahelptree.IsAgentMode() {
 				fmt.Fprintln(cmd.OutOrStdout(), "crontab: uninstalled")
 				return nil
 			}

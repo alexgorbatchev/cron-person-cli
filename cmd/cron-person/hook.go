@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
 	"github.com/spf13/cobra"
-	"github.com/alexgorbatchev/cron-person-cli/internal/agent"
 	"github.com/alexgorbatchev/cron-person-cli/internal/hook"
 )
 
@@ -47,7 +47,7 @@ func newHookExportCommand() *cobra.Command {
 				return err
 			}
 
-			return hook.HandleHookExport(st, cwd, agent.IsAgentMode(), cmd.ErrOrStderr())
+			return hook.HandleHookExport(st, cwd, cobrahelptree.IsAgentMode(), cmd.ErrOrStderr())
 		},
 	}
 }

@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
 	"github.com/spf13/cobra"
-	"github.com/alexgorbatchev/cron-person-cli/internal/agent"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
 	"github.com/alexgorbatchev/cron-person-cli/internal/runner"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
@@ -67,7 +67,7 @@ func newTaskListCommand() *cobra.Command {
 				}
 			}
 
-			if agent.IsAgentMode() {
+			if cobrahelptree.IsAgentMode() {
 				for _, t := range tasks {
 					fmt.Fprintf(cmd.OutOrStdout(), "dir: %s\tschedule: %s\tline: %d\tcmd: %s\n", t.Dir, t.Schedule, t.Line, t.Command)
 				}

@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/alexgorbatchev/cron-person-cli/internal/agent"
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
 )
 
 func main() {
 	if err := newRootCommand().Execute(); err != nil {
-		if agent.IsAgentMode() {
+		if cobrahelptree.IsAgentMode() {
 			fmt.Fprintf(os.Stderr, "ERR: %v\n", err)
 		} else {
 			fmt.Fprintf(os.Stderr, "[ERROR] %v\n", err)
