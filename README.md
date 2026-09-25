@@ -134,6 +134,10 @@ cron-person hook fish | source
 | :--- | :--- | :--- |
 | `exec` | `<dir> [--] <command...>` | Internal execution engine invoked by crontab runner |
 
+# Name Rationale
+
+Originally conceived as `cron-man` (short for *cron manager*). However, "cron man" felt out of touch with the times, so it became `cron-person` instead.
+
 # License
 
 [MIT](LICENSE) © Alex Gorbatchev
