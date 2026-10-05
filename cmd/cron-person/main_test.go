@@ -151,3 +151,17 @@ func TestCLI_AgentMode(t *testing.T) {
 		t.Errorf("expected agent mode key-value output, got: %s", out)
 	}
 }
+
+func TestRootCommand_ErrorsAreNotPrintedByCobra(t *testing.T) {
+	out, err := executeCommand("--unknown")
+	if err == nil {
+		t.Fatal("expected an error for an unknown flag")
+	}
+	if !strings.Contains(err.Error(), "unknown flag: --unknown") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	// main is the single place that prints the returned error; Cobra must not print it as well
+	if strings.Contains(out, "unknown flag") || strings.Contains(out, "Error:") {
+		t.Fatalf("expected Cobra not to print the error, got output: %q", out)
+	}
+}
