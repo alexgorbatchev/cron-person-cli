@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
-	"github.com/spf13/cobra"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -27,11 +27,12 @@ func getStore(cmd *cobra.Command) (*store.Store, error) {
 
 func newRootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
-		Use:          "cron-person",
-		Short:        "Higher-order per-directory crontab manager with direnv-style shell integration",
-		Long:         "cron-person is a higher-order crontab manager that executes cron tasks in their respective directory contexts with direnv-style allow/deny authorization.",
-		Version:      version,
-		SilenceUsage: true,
+		Use:           "cron-person",
+		Short:         "Higher-order per-directory crontab manager with direnv-style shell integration",
+		Long:          "cron-person is a higher-order crontab manager that executes cron tasks in their respective directory contexts with direnv-style allow/deny authorization.",
+		Version:       version,
+		SilenceUsage:  true,
+		SilenceErrors: true, // main renders the returned error once, in the mode-specific format
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
