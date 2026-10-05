@@ -37,6 +37,7 @@ func TestRootCommand_HelpAndVersion(t *testing.T) {
 }
 
 func TestCLI_Workflow_AllowDenyCheckList(t *testing.T) {
+	t.Setenv("AGENT", "0")
 	tempDir := t.TempDir()
 	storeFile := filepath.Join(tempDir, "state.json")
 	projectDir := filepath.Join(tempDir, "sample-project")

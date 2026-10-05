@@ -1,0 +1,29 @@
+#!/bin/sh
+# File-backed crontab boundary fixture. PATH is restricted to this directory in tests.
+set -eu
+: "${TEST_CRONTAB_FILE:?test state path is required}"
+printf '%s\n' "$*" >> "${TEST_CRONTAB_FILE}.calls"
+case "$*" in
+  -l)
+    if [ -n "${TEST_CRONTAB_READ_ERROR:-}" ]; then
+      printf '%s\n' "$TEST_CRONTAB_READ_ERROR" >&2
+      exit 1
+    fi
+    if [ ! -f "$TEST_CRONTAB_FILE" ]; then
+      printf '%s\n' 'no crontab for test-user' >&2
+      exit 1
+    fi
+    /bin/cat "$TEST_CRONTAB_FILE"
+    ;;
+  -)
+    if [ -n "${TEST_CRONTAB_WRITE_ERROR:-}" ]; then
+      printf '%s\n' "$TEST_CRONTAB_WRITE_ERROR" >&2
+      exit 1
+    fi
+    /bin/cat > "$TEST_CRONTAB_FILE"
+    ;;
+  *)
+    printf '%s\n' 'unexpected crontab arguments' >&2
+    exit 2
+    ;;
+esac
