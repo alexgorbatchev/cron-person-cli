@@ -38,6 +38,9 @@ type Store struct {
 	records  map[string]Record
 }
 
+// Path returns the authorization file used by this store.
+func (s *Store) Path() string { return s.filePath }
+
 // DefaultStorePath returns the standard XDG state file path for cron-person.
 func DefaultStorePath() (string, error) {
 	if stateHome := os.Getenv("XDG_STATE_HOME"); stateHome != "" {

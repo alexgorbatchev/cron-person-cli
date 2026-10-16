@@ -1,5 +1,6 @@
 ---
 created_on: 2026-09-24 17:53
+last_modified: 2026-10-16 10:27
 status: current
 ---
 
@@ -25,6 +26,7 @@ Higher-order per-directory crontab manager with direnv-style shell integration
 - **Help Screens & Terminal Width:** CLI help output (`--help`) must display an aligned hierarchical tree view with `├─` and `╰─` glyphs powered by `github.com/alexgorbatchev/cobra-help-tree/v2` (`cobrahelptree.Setup(rootCmd)`), with command descriptions automatically trimmed to the terminal width using ellipsis (`...`).
 - **Agent Mode (`AGENT=1`):** When `AGENT=1` is set, output compact key-value pairs or bullets.
 - **Hermetic Unit Tests:** All unit tests must remain 100% offline and hermetic.
+- **Generated Commands:** Keep the entire task command inside one shell argument, escape cron percent signs, and pass the absolute authorization store path explicitly. Test generated entries through the outer shell as in `cmd/cron-person/generated_test.go`.
 
 ## Boundaries
 - **Always:** Maintain >= 90% statement code coverage across Go packages.

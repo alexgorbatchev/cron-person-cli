@@ -80,7 +80,7 @@ func newCrontabShowCommand() *cobra.Command {
 				}
 			}
 
-			block, err := crontab.GenerateBlock(validRecords, exePath)
+			block, err := crontab.GenerateBlock(validRecords, exePath, st.Path())
 			if err != nil {
 				return err
 			}

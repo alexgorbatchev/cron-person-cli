@@ -2,6 +2,7 @@ package crontab
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -24,6 +25,34 @@ func TestMergeCrontab_NewBlock(t *testing.T) {
 	}
 	if !strings.Contains(merged, managedBlock) {
 		t.Errorf("expected managed block inserted, got: %s", merged)
+	}
+}
+
+func TestQuoteCronArgRoundTrip(t *testing.T) {
+	for _, input := range []string{"", "plain", "spaces and 'quotes'", `dollar$backtick` + "`" + `slash\`, `%`, `\%`, `\\%`, "line\nbreak"} {
+		t.Run(input, func(t *testing.T) {
+			arg := strings.ReplaceAll(quoteCronArg(input), `\%`, "%")
+			cmd := exec.Command("/bin/sh", "-c", "printf '%s' "+arg)
+			out, err := cmd.CombinedOutput()
+			if err != nil || string(out) != input {
+				t.Fatalf("round trip=%q err=%v want=%q", out, err, input)
+			}
+		})
+	}
+}
+
+func TestGenerateBlockRejectsInvalidPaths(t *testing.T) {
+	for _, tt := range []struct{ name, bin, state, dir string }{
+		{"executable", "bad\nbin", "state", "dir"},
+		{"state", "bin", "bad\rstate", "dir"},
+		{"directory", "bin", "state", "bad\ndir"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			block, err := GenerateBlock([]store.Record{{Dir: tt.dir}}, tt.bin, tt.state)
+			if err == nil || block != "" {
+				t.Fatalf("unsafe block=%q err=%v", block, err)
+			}
+		})
 	}
 }
 
@@ -86,15 +115,16 @@ func TestGenerateBlock(t *testing.T) {
 		},
 	}
 
-	block, err := GenerateBlock(records, "/usr/local/bin/cron-person")
+	state := filepath.Join(tempDir, "state.json")
+	block, err := GenerateBlock(records, "/usr/local/bin/cron-person", state)
 	if err != nil {
 		t.Fatalf("unexpected GenerateBlock error: %v", err)
 	}
 
-	if !strings.Contains(block, "0 * * * * /usr/local/bin/cron-person exec "+appDir+" -- ./task.sh") {
+	if !strings.Contains(block, "0 * * * * '/usr/local/bin/cron-person' --store '"+state+"' exec '"+appDir+"' -- './task.sh'") {
 		t.Errorf("expected task 1 in block, got: %s", block)
 	}
-	if !strings.Contains(block, "@daily /usr/local/bin/cron-person exec "+appDir+" -- make sync") {
+	if !strings.Contains(block, "@daily '/usr/local/bin/cron-person' --store '"+state+"' exec '"+appDir+"' -- 'make sync'") {
 		t.Errorf("expected task 2 in block, got: %s", block)
 	}
 }

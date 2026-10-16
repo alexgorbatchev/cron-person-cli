@@ -189,7 +189,8 @@ func TestGenerateBlockSkipsUnusableFiles(t *testing.T) {
 		records = append(records, store.Record{Dir: dir, Path: path})
 	}
 	records = append(records, store.Record{Dir: dir, Path: filepath.Join(dir, "missing")})
-	block, err := GenerateBlock(records, "")
+	state := filepath.Join(dir, "state.json")
+	block, err := GenerateBlock(records, "", state)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +198,7 @@ func TestGenerateBlockSkipsUnusableFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(block, "@hourly "+exe+" exec "+dir+" -- run-active") || strings.Count(block, "# Directory:") != 1 {
+	if !strings.Contains(block, "@hourly '"+exe+"' --store '"+state+"' exec '"+dir+"' -- 'run-active'") || strings.Count(block, "# Directory:") != 1 {
 		t.Fatalf("unexpected generated block: %s", block)
 	}
 }
