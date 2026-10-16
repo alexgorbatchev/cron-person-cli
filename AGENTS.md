@@ -10,6 +10,7 @@ Higher-order per-directory crontab manager with direnv-style shell integration
 
 ## Commands
 - **Build Local Binary:** `just build` (compiles to `bin/cron-person`)
+- **Install Development Build:** `just dev-bootstrap` builds version `999.0.0-dev.<revision>` and atomically replaces the payload referenced by the existing dotfiles shim. Override the dotfiles root with `just dev-bootstrap /path/to/dotfiles`; keep the shim and its symlinks intact.
 - **Run CLI with Arguments:** `just run [args...]`
 - **Run CLI in Agent Mode:** `just run-ai [args...]` (`AGENT=1`)
 - **Run Tests:** `just test` (`go test -v ./...`)
