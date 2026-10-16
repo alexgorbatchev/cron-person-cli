@@ -6,11 +6,11 @@ default:
 
 # Run CLI in human mode (default)
 run *args:
-    go run ./cmd/cron-person {{args}}
+    go run ./cmd/cron-person {{ args }}
 
 # Run CLI in agent-facing mode
 run-ai *args:
-    AGENT=1 go run ./cmd/cron-person {{args}}
+    AGENT=1 go run ./cmd/cron-person {{ args }}
 
 # Run test suite
 test:

@@ -5,9 +5,9 @@ import (
 	"os"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
-	"github.com/spf13/cobra"
 	"github.com/alexgorbatchev/cron-person-cli/internal/crontab"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
+	"github.com/spf13/cobra"
 )
 
 func newCrontabCommand() *cobra.Command {

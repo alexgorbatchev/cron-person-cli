@@ -18,7 +18,7 @@ type DirStatus string
 const (
 	StatusAllowed       DirStatus = "allowed"
 	StatusChanged       DirStatus = "changed"
-	StatusUnauthorized DirStatus = "unauthorized"
+	StatusUnauthorized  DirStatus = "unauthorized"
 	StatusMissingCronrc DirStatus = "missing_cronrc"
 	StatusOrphan        DirStatus = "orphan"
 )
