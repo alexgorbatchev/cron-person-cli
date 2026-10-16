@@ -197,7 +197,7 @@ func TestGenerateBlockSkipsUnusableFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(block, "@hourly "+exe+" exec "+dir+" -- run-active") || strings.Count(block, "# Directory:") != 1 {
+	if !strings.Contains(block, "@hourly '"+exe+"' exec '"+dir+"' -- 'run-active'") || strings.Count(block, "# Directory:") != 1 {
 		t.Fatalf("unexpected generated block: %s", block)
 	}
 }

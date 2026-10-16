@@ -19,6 +19,57 @@ const (
 
 var blockRegex = regexp.MustCompile(`(?s)# >>> cron-person managed block \(DO NOT EDIT DIRECTLY\) >>>.*?# <<< cron-person managed block <<<(\n)?`)
 
+func quoteCronArg(value string) (string, error) {
+	if value == "" || strings.ContainsAny(value, "\n\r\x00") {
+		return "", fmt.Errorf("crontab argument cannot be empty or contain control characters")
+	}
+
+	var sb strings.Builder
+	inSingleQuotes := false
+	prevBackslashInQuotes := false
+
+	openQuotes := func() {
+		if !inSingleQuotes {
+			sb.WriteByte('\'')
+			inSingleQuotes = true
+			prevBackslashInQuotes = false
+		}
+	}
+	closeQuotes := func() {
+		if inSingleQuotes {
+			sb.WriteByte('\'')
+			inSingleQuotes = false
+			prevBackslashInQuotes = false
+		}
+	}
+
+	for i := 0; i < len(value); i++ {
+		ch := value[i]
+		switch ch {
+		case '\'':
+			closeQuotes()
+			sb.WriteString(`"'"`)
+		case '%':
+			closeQuotes()
+			sb.WriteString(`\%`)
+		case '\\':
+			if prevBackslashInQuotes {
+				closeQuotes()
+			}
+			openQuotes()
+			sb.WriteByte('\\')
+			prevBackslashInQuotes = true
+		default:
+			openQuotes()
+			sb.WriteByte(ch)
+			prevBackslashInQuotes = false
+		}
+	}
+	closeQuotes()
+
+	return sb.String(), nil
+}
+
 // GenerateBlock builds the managed crontab string from all authorized records.
 func GenerateBlock(records []store.Record, binPath string) (string, error) {
 	if binPath == "" {
@@ -28,6 +79,10 @@ func GenerateBlock(records []store.Record, binPath string) (string, error) {
 		} else {
 			binPath = executable
 		}
+	}
+	quotedBin, err := quoteCronArg(binPath)
+	if err != nil {
+		return "", fmt.Errorf("invalid executable path %q: %w", binPath, err)
 	}
 
 	var sb strings.Builder
@@ -45,9 +100,18 @@ func GenerateBlock(records []store.Record, binPath string) (string, error) {
 			continue
 		}
 
+		quotedDir, err := quoteCronArg(rec.Dir)
+		if err != nil {
+			return "", fmt.Errorf("invalid directory path %q: %w", rec.Dir, err)
+		}
+
 		sb.WriteString(fmt.Sprintf("# Directory: %s\n", rec.Dir))
 		for _, task := range parsed.Tasks {
-			sb.WriteString(fmt.Sprintf("%s %s exec %s -- %s\n", task.Schedule, binPath, rec.Dir, task.Command))
+			quotedCmd, err := quoteCronArg(task.Command)
+			if err != nil {
+				return "", fmt.Errorf("invalid command in %s: %w", rec.Path, err)
+			}
+			sb.WriteString(fmt.Sprintf("%s %s exec %s -- %s\n", task.Schedule, quotedBin, quotedDir, quotedCmd))
 		}
 	}
 
