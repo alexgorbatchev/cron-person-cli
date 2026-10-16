@@ -22,6 +22,9 @@ var blockRegex = regexp.MustCompile(`(?s)# >>> cron-person managed block \(DO NO
 
 // GenerateBlock builds the managed crontab string from all authorized records.
 func GenerateBlock(records []store.Record, binPath, storePath string) (string, error) {
+	if strings.TrimSpace(storePath) == "" {
+		return "", fmt.Errorf("authorization store path cannot be empty")
+	}
 	storePath, err := filepath.Abs(storePath)
 	if err != nil {
 		return "", fmt.Errorf("resolving authorization store: %w", err)
@@ -43,8 +46,8 @@ func GenerateBlock(records []store.Record, binPath, storePath string) (string, e
 	sb.WriteString("\n")
 
 	for _, rec := range records {
-		if strings.ContainsAny(rec.Dir, "\r\n\x00") {
-			return "", fmt.Errorf("directory path must not contain line breaks or NUL")
+		if strings.TrimSpace(rec.Dir) == "" || strings.ContainsAny(rec.Dir, "\r\n\x00") {
+			return "", fmt.Errorf("directory path must not be empty or contain line breaks or NUL")
 		}
 		parsed, err := cronrc.ParseFile(rec.Path)
 		if err != nil {
@@ -58,6 +61,9 @@ func GenerateBlock(records []store.Record, binPath, storePath string) (string, e
 
 		sb.WriteString(fmt.Sprintf("# Directory: %s\n", rec.Dir))
 		for _, task := range parsed.Tasks {
+			if strings.ContainsAny(task.Schedule+task.Command, "\r\n\x00") {
+				return "", fmt.Errorf("task in %s must not contain line breaks or NUL", rec.Path)
+			}
 			sb.WriteString(fmt.Sprintf("%s %s --store %s exec %s -- %s\n", task.Schedule,
 				quoteCronArg(binPath), quoteCronArg(storePath), quoteCronArg(rec.Dir), quoteCronArg(task.Command)))
 		}
@@ -68,12 +74,35 @@ func GenerateBlock(records []store.Record, binPath, storePath string) (string, e
 }
 
 // Keep shell syntax inside a single argument for the authorized runner. Cron
-// processes percent signs before the shell, even inside quotes; isolate each
-// escaped percent outside quotes so preceding backslashes cannot consume it.
+// processes percent signs and consecutive backslashes before the shell, even
+// inside quotes; isolate each escaped percent outside quotes and separate
+// adjacent backslashes across single-quoted segments.
 func quoteCronArg(s string) string {
-	s = strings.ReplaceAll(s, "'", "'\"'\"'")
-	s = strings.ReplaceAll(s, "%", "'\\%'")
-	return "'" + s + "'"
+	var sb strings.Builder
+	sb.WriteByte('\'')
+	prevBackslash := false
+	for i := 0; i < len(s); i++ {
+		ch := s[i]
+		switch ch {
+		case '\'':
+			sb.WriteString(`'"'"'`)
+			prevBackslash = false
+		case '%':
+			sb.WriteString(`'\%'`)
+			prevBackslash = false
+		case '\\':
+			if prevBackslash {
+				sb.WriteString(`''`)
+			}
+			sb.WriteByte('\\')
+			prevBackslash = true
+		default:
+			sb.WriteByte(ch)
+			prevBackslash = false
+		}
+	}
+	sb.WriteByte('\'')
+	return sb.String()
 }
 
 // MergeCrontab merges the managed block into existing crontab text.
