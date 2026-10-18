@@ -238,3 +238,40 @@ func TestRunnerSingleSnapshotPreventsMidFlightReplacement(t *testing.T) {
 		t.Fatalf("stdout=%q, want %q", stdout.String(), "approved")
 	}
 }
+
+func TestRunnerRejectsDirectoryAfterFailedStoreAllow(t *testing.T) {
+	dir := t.TempDir()
+	statePath := filepath.Join(dir, "state", "allowed.json")
+	st, err := store.NewStore(statePath)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	projectDir := filepath.Join(dir, "project")
+	if err := os.MkdirAll(projectDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, ".cronrc"), []byte("@daily true\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	// Block committing statePath by turning it into a directory.
+	if err := os.MkdirAll(statePath, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Allow(projectDir); err == nil {
+		t.Fatal("expected Allow to fail when statePath is a directory")
+	}
+
+	marker := filepath.Join(projectDir, "ran")
+	err = NewRunner(st).Exec(t.Context(), ExecOptions{
+		Dir:     projectDir,
+		Command: "touch ran",
+	})
+	if err == nil || !strings.Contains(err.Error(), "unauthorized") {
+		t.Fatalf("expected unauthorized error after failed Allow, got %v", err)
+	}
+	if _, statErr := os.Stat(marker); !os.IsNotExist(statErr) {
+		t.Fatalf("command executed after failed Allow: %v", statErr)
+	}
+}

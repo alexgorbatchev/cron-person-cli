@@ -399,3 +399,65 @@ func TestNewStoreResolvesAbsolutePathAcrossWorkingDirectories(t *testing.T) {
 		t.Fatalf("expected store file at %s, stat err=%v", wantPath, err)
 	}
 }
+
+func TestStoreFailedPersistencePreservesMemoryConsistency(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "state", "allowed.json")
+	project := filepath.Join(dir, "project")
+	if err := os.MkdirAll(project, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeStoreFile(t, filepath.Join(project, ".cronrc"), "@daily true\n")
+
+	st, err := NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	// 1. Failed Allow must not authorize the directory in memory.
+	if _, err := st.Allow(project); err == nil {
+		t.Fatal("expected Allow to fail when store path is a directory")
+	}
+	if status, _, err := st.Status(project); err != nil || status != StatusUnauthorized {
+		t.Fatalf("failed Allow left status=%s err=%v, want %s", status, err, StatusUnauthorized)
+	}
+	if rec, ok := st.Get(project); ok || rec != nil {
+		t.Fatalf("failed Allow left record in memory: %+v", rec)
+	}
+
+	// Restore writable store path and allow project.
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Allow(project); err != nil {
+		t.Fatal(err)
+	}
+
+	// 2. Failed Deny must not revoke the directory in memory when commit fails.
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Deny(project); err == nil {
+		t.Fatal("expected Deny to fail when store path is a directory")
+	}
+	if status, _, err := st.Status(project); err != nil || status != StatusAllowed {
+		t.Fatalf("failed Deny changed in-memory status=%s err=%v, want %s", status, err, StatusAllowed)
+	}
+
+	// 3. Failed Prune must not remove the record from memory when commit fails.
+	if err := os.Remove(filepath.Join(project, ".cronrc")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Prune(); err == nil {
+		t.Fatal("expected Prune to fail when store path is a directory")
+	}
+	if _, ok := st.Get(project); !ok {
+		t.Fatal("failed Prune removed record from in-memory store")
+	}
+}

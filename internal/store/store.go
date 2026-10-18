@@ -130,9 +130,17 @@ func (s *Store) reloadLocked() error {
 	return nil
 }
 
-func (s *Store) saveLocked() error {
-	list := make([]Record, 0, len(s.records))
-	for _, rec := range s.records {
+func (s *Store) cloneRecordsLocked() map[string]Record {
+	cloned := make(map[string]Record, len(s.records))
+	for k, v := range s.records {
+		cloned[k] = v
+	}
+	return cloned
+}
+
+func (s *Store) saveRecordsLocked(records map[string]Record) error {
+	list := make([]Record, 0, len(records))
+	for _, rec := range records {
 		list = append(list, rec)
 	}
 
@@ -161,6 +169,7 @@ func (s *Store) saveLocked() error {
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("committing store file: %w", err)
 	}
+	s.records = records
 	return nil
 }
 
@@ -191,8 +200,9 @@ func (s *Store) Allow(dir string) (*Record, error) {
 		if err := s.reloadLocked(); err != nil {
 			return err
 		}
-		s.records[absDir] = rec
-		return s.saveLocked()
+		next := s.cloneRecordsLocked()
+		next[absDir] = rec
+		return s.saveRecordsLocked(next)
 	})
 	if err != nil {
 		return nil, err
@@ -214,8 +224,9 @@ func (s *Store) Deny(dir string) error {
 		if err := s.reloadLocked(); err != nil {
 			return err
 		}
-		delete(s.records, absDir)
-		return s.saveLocked()
+		next := s.cloneRecordsLocked()
+		delete(next, absDir)
+		return s.saveRecordsLocked(next)
 	})
 }
 
@@ -319,15 +330,16 @@ func (s *Store) Prune() ([]string, error) {
 		if err := s.reloadLocked(); err != nil {
 			return err
 		}
-		for dir := range s.records {
+		next := s.cloneRecordsLocked()
+		for dir := range next {
 			cronrcPath := filepath.Join(dir, ".cronrc")
 			if info, err := os.Stat(cronrcPath); err != nil || info.IsDir() {
-				delete(s.records, dir)
+				delete(next, dir)
 				pruned = append(pruned, dir)
 			}
 		}
 		if len(pruned) > 0 {
-			return s.saveLocked()
+			return s.saveRecordsLocked(next)
 		}
 		return nil
 	})
