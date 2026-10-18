@@ -6,7 +6,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
@@ -17,8 +16,6 @@ const (
 	BlockStart = "# >>> cron-person managed block (DO NOT EDIT DIRECTLY) >>>"
 	BlockEnd   = "# <<< cron-person managed block <<<"
 )
-
-var blockRegex = regexp.MustCompile(`(?s)# >>> cron-person managed block \(DO NOT EDIT DIRECTLY\) >>>.*?# <<< cron-person managed block <<<(\n)?`)
 
 // GenerateBlock builds the managed crontab string from all authorized records.
 func GenerateBlock(records []store.Record, binPath, storePath string) (string, error) {
@@ -106,27 +103,67 @@ func quoteCronArg(s string) string {
 }
 
 // MergeCrontab merges the managed block into existing crontab text.
-func MergeCrontab(existing string, managedBlock string) string {
-	cleaned := RemoveBlock(existing)
+func MergeCrontab(existing string, managedBlock string) (string, error) {
+	cleaned, err := RemoveBlock(existing)
+	if err != nil {
+		return "", err
+	}
 	cleaned = strings.TrimRight(cleaned, "\n")
 
 	if managedBlock == "" {
 		if cleaned == "" {
-			return ""
+			return "", nil
 		}
-		return cleaned + "\n"
+		return cleaned + "\n", nil
 	}
 
 	if cleaned == "" {
-		return managedBlock + "\n"
+		return managedBlock + "\n", nil
 	}
 
-	return cleaned + "\n\n" + managedBlock + "\n"
+	return cleaned + "\n\n" + managedBlock + "\n", nil
 }
 
 // RemoveBlock strips the managed block from crontab text.
-func RemoveBlock(existing string) string {
-	return blockRegex.ReplaceAllString(existing, "")
+func RemoveBlock(existing string) (string, error) {
+	blockStartOffset := -1
+	blockEndOffset := -1
+
+	for offset := 0; offset < len(existing); {
+		lineEnd := len(existing)
+		if nl := strings.IndexByte(existing[offset:], '\n'); nl >= 0 {
+			lineEnd = offset + nl + 1
+		}
+		line := strings.TrimSuffix(existing[offset:lineEnd], "\n")
+		line = strings.TrimSuffix(line, "\r")
+
+		switch line {
+		case BlockStart:
+			if blockStartOffset >= 0 && blockEndOffset < 0 {
+				return "", fmt.Errorf("malformed crontab: nested %q without matching end marker", BlockStart)
+			}
+			if blockEndOffset >= 0 {
+				return "", fmt.Errorf("ambiguous crontab: multiple cron-person managed blocks found")
+			}
+			blockStartOffset = offset
+		case BlockEnd:
+			if blockStartOffset < 0 || blockEndOffset >= 0 {
+				return "", fmt.Errorf("malformed crontab: unexpected %q without matching start marker", BlockEnd)
+			}
+			blockEndOffset = lineEnd
+		}
+
+		offset = lineEnd
+	}
+
+	if blockStartOffset >= 0 && blockEndOffset < 0 {
+		return "", fmt.Errorf("malformed crontab: unclosed %q without matching end marker", BlockStart)
+	}
+	if blockStartOffset < 0 {
+		return existing, nil
+	}
+
+	return existing[:blockStartOffset] + existing[blockEndOffset:], nil
 }
 
 // ReadSystemCrontab executes `crontab -l` to get the current user's crontab.
@@ -183,7 +220,10 @@ func Sync(st *store.Store, binPath string) (int, error) {
 		return 0, err
 	}
 
-	updated := MergeCrontab(existing, managedBlock)
+	updated, err := MergeCrontab(existing, managedBlock)
+	if err != nil {
+		return 0, err
+	}
 	if err := WriteSystemCrontab(updated); err != nil {
 		return 0, err
 	}
@@ -198,6 +238,9 @@ func Uninstall() error {
 		return err
 	}
 
-	cleaned := RemoveBlock(existing)
+	cleaned, err := RemoveBlock(existing)
+	if err != nil {
+		return err
+	}
 	return WriteSystemCrontab(cleaned)
 }

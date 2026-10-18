@@ -21,7 +21,10 @@ func TestMergeCrontab_NewBlock(t *testing.T) {
 @hourly /path/to/cron-person exec "/var/app" -- ./run.sh
 # <<< cron-person managed block <<<`
 
-	merged := MergeCrontab(existing, managedBlock)
+	merged, err := MergeCrontab(existing, managedBlock)
+	if err != nil {
+		t.Fatalf("unexpected MergeCrontab error: %v", err)
+	}
 
 	if !strings.HasPrefix(merged, "MAILTO=admin@example.com") {
 		t.Errorf("expected existing crontab retained, got: %s", merged)
@@ -74,7 +77,10 @@ func TestMergeCrontab_ReplaceExistingBlock(t *testing.T) {
 @hourly /new/cron-person exec "/new/dir" -- ./new.sh
 # <<< cron-person managed block <<<`
 
-	merged := MergeCrontab(existing, newBlock)
+	merged, err := MergeCrontab(existing, newBlock)
+	if err != nil {
+		t.Fatalf("unexpected MergeCrontab error: %v", err)
+	}
 
 	if strings.Contains(merged, "@daily /old/cron-person") {
 		t.Errorf("expected old block to be removed, got: %s", merged)
@@ -96,12 +102,72 @@ func TestRemoveBlock(t *testing.T) {
 
 30 4 * * * /usr/bin/cleanup.sh
 `
-	removed := RemoveBlock(existing)
+	removed, err := RemoveBlock(existing)
+	if err != nil {
+		t.Fatalf("unexpected RemoveBlock error: %v", err)
+	}
 	if strings.Contains(removed, "cron-person managed block") {
 		t.Errorf("expected managed block removed, got: %s", removed)
 	}
 	if !strings.Contains(removed, "0 0 * * * /usr/bin/custom-script.sh") || !strings.Contains(removed, "30 4 * * * /usr/bin/cleanup.sh") {
 		t.Errorf("expected original jobs preserved, got: %s", removed)
+	}
+
+	unmanagedWithMarkers := "@daily echo '" + BlockStart + "'\n# comment mentioning " + BlockStart + "\n@hourly personal-job\n@daily echo '" + BlockEnd + "'\n# comment mentioning " + BlockEnd + "\n"
+	preserved, err := RemoveBlock(unmanagedWithMarkers)
+	if err != nil {
+		t.Fatalf("unexpected RemoveBlock error on marker substrings: %v", err)
+	}
+	if preserved != unmanagedWithMarkers {
+		t.Fatalf("unmanaged jobs with marker substrings modified: got=%q, want=%q", preserved, unmanagedWithMarkers)
+	}
+}
+
+func TestRemoveAndMergeBlock_MalformedAndRepeatedBlocks(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		existing string
+		wantErr  string
+	}{
+		{
+			name:     "unclosed start marker",
+			existing: "@daily job\n" + BlockStart + "\n@hourly managed\n",
+			wantErr:  "unclosed",
+		},
+		{
+			name:     "end marker without start marker",
+			existing: "@daily job\n" + BlockEnd + "\n",
+			wantErr:  "unexpected",
+		},
+		{
+			name:     "end marker before start marker",
+			existing: BlockEnd + "\n@daily job\n" + BlockStart + "\n" + BlockEnd + "\n",
+			wantErr:  "unexpected",
+		},
+		{
+			name:     "nested start marker",
+			existing: BlockStart + "\n@hourly one\n" + BlockStart + "\n@hourly two\n" + BlockEnd + "\n",
+			wantErr:  "nested",
+		},
+		{
+			name:     "repeated managed blocks",
+			existing: BlockStart + "\n@hourly one\n" + BlockEnd + "\n@daily user-job\n" + BlockStart + "\n@hourly two\n" + BlockEnd + "\n",
+			wantErr:  "multiple",
+		},
+		{
+			name:     "extra end marker after closed block",
+			existing: BlockStart + "\n@hourly one\n" + BlockEnd + "\n" + BlockEnd + "\n",
+			wantErr:  "unexpected",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got, err := RemoveBlock(tt.existing); err == nil || !strings.Contains(err.Error(), tt.wantErr) || got != "" {
+				t.Fatalf("RemoveBlock=%q err=%v, want error containing %q", got, err, tt.wantErr)
+			}
+			if got, err := MergeCrontab(tt.existing, BlockStart+"\n"+BlockEnd); err == nil || !strings.Contains(err.Error(), tt.wantErr) || got != "" {
+				t.Fatalf("MergeCrontab=%q err=%v, want error containing %q", got, err, tt.wantErr)
+			}
+		})
 	}
 }
 

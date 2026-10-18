@@ -211,9 +211,76 @@ func TestMergeCrontabEmptyInputs(t *testing.T) {
 		{"new only block", "", "managed", "managed\n"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := MergeCrontab(tt.existing, tt.managed); got != tt.want {
-				t.Fatalf("merged=%q, want %q", got, tt.want)
+			got, err := MergeCrontab(tt.existing, tt.managed)
+			if err != nil || got != tt.want {
+				t.Fatalf("merged=%q err=%v, want %q", got, err, tt.want)
 			}
 		})
+	}
+}
+
+func TestSyncAndUninstallPreserveMarkerSubstringsAndRejectMalformed(t *testing.T) {
+	path := isolatedCrontab(t)
+	dir := t.TempDir()
+	st, err := store.NewStore(filepath.Join(dir, "state.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	project := filepath.Join(dir, "app")
+	if err := os.Mkdir(project, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeCrontabFile(t, filepath.Join(project, ".cronrc"), "@daily run-app\n")
+	if _, err := st.Allow(project); err != nil {
+		t.Fatal(err)
+	}
+
+	userJobs := "@daily echo '" + BlockStart + "'\n@hourly personal-job\n@daily echo '" + BlockEnd + "'\n"
+	writeCrontabFile(t, path, userJobs)
+
+	if err := Uninstall(); err != nil {
+		t.Fatalf("Uninstall without managed block err=%v", err)
+	}
+	if data, err := os.ReadFile(path); err != nil || string(data) != userJobs {
+		t.Fatalf("Uninstall modified unmanaged marker substrings: got=%q want=%q err=%v", data, userJobs, err)
+	}
+
+	if count, err := Sync(st, "/opt/cron-person"); err != nil || count != 1 {
+		t.Fatalf("Sync count=%d err=%v", count, err)
+	}
+	syncedData, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(syncedData), userJobs) || !strings.Contains(string(syncedData), "run-app") {
+		t.Fatalf("Sync failed to preserve unmanaged marker substrings: %q", syncedData)
+	}
+
+	if err := Uninstall(); err != nil {
+		t.Fatalf("Uninstall err=%v", err)
+	}
+	uninstalledData, err := os.ReadFile(path)
+	if err != nil || strings.TrimRight(string(uninstalledData), "\n")+"\n" != userJobs || strings.Contains(string(uninstalledData), "run-app") {
+		t.Fatalf("Uninstall modified unmanaged marker substrings: got=%q want=%q err=%v", uninstalledData, userJobs, err)
+	}
+
+	for _, malformed := range []string{
+		userJobs + BlockStart + "\n@hourly unclosed\n",
+		userJobs + BlockEnd + "\n",
+		BlockStart + "\n@hourly one\n" + BlockEnd + "\n@daily middle\n" + BlockStart + "\n@hourly two\n" + BlockEnd + "\n",
+	} {
+		writeCrontabFile(t, path, malformed)
+		if _, err := Sync(st, "/opt/cron-person"); err == nil {
+			t.Fatalf("expected Sync to reject malformed crontab %q", malformed)
+		}
+		if data, err := os.ReadFile(path); err != nil || string(data) != malformed {
+			t.Fatalf("Sync modified malformed crontab: got=%q want=%q err=%v", data, malformed, err)
+		}
+		if err := Uninstall(); err == nil {
+			t.Fatalf("expected Uninstall to reject malformed crontab %q", malformed)
+		}
+		if data, err := os.ReadFile(path); err != nil || string(data) != malformed {
+			t.Fatalf("Uninstall modified malformed crontab: got=%q want=%q err=%v", data, malformed, err)
+		}
 	}
 }
