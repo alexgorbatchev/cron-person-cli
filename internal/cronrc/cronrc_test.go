@@ -2,6 +2,7 @@ package cronrc
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -12,6 +13,8 @@ func TestParse_StandardCrontab(t *testing.T) {
 # Project level cron tasks
 SHELL=/bin/bash
 PROJECT_ENV=production
+SPACED_VAR = spaced value
+QUOTED_SPACED = "  keep spaces  "
 
 # Run backup every hour
 0 * * * * ./scripts/backup.sh --full
@@ -22,8 +25,8 @@ PROJECT_ENV=production
 # Every 15 minutes sync
 */15 * * * * sync-worker --queue=default
 
-# Every 2 hours
-@every 2h ./worker.sh
+# Weekly on Sunday using standard crontab day-of-week 7
+0 0 * * 7 ./worker.sh
 
 # At reboot
 @reboot ./startup.sh
@@ -48,6 +51,12 @@ OTHER_KEY='hello world'
 	if file.Env["PROJECT_ENV"] != "production" {
 		t.Errorf("expected PROJECT_ENV=production, got %q", file.Env["PROJECT_ENV"])
 	}
+	if file.Env["SPACED_VAR"] != "spaced value" {
+		t.Errorf("expected SPACED_VAR='spaced value', got %q", file.Env["SPACED_VAR"])
+	}
+	if file.Env["QUOTED_SPACED"] != "  keep spaces  " {
+		t.Errorf("expected QUOTED_SPACED='  keep spaces  ', got %q", file.Env["QUOTED_SPACED"])
+	}
 	if file.Env["API_KEY"] != "secret 123" {
 		t.Errorf("expected API_KEY='secret 123', got %q", file.Env["API_KEY"])
 	}
@@ -68,7 +77,7 @@ OTHER_KEY='hello world'
 	if file.Tasks[2].Schedule != "*/15 * * * *" || file.Tasks[2].Command != "sync-worker --queue=default" {
 		t.Errorf("task 2 mismatch: %+v", file.Tasks[2])
 	}
-	if file.Tasks[3].Schedule != "@every 2h" || file.Tasks[3].Command != "./worker.sh" {
+	if file.Tasks[3].Schedule != "0 0 * * 7" || file.Tasks[3].Command != "./worker.sh" {
 		t.Errorf("task 3 mismatch: %+v", file.Tasks[3])
 	}
 	if file.Tasks[4].Schedule != "@reboot" || file.Tasks[4].Command != "./startup.sh" {
@@ -76,22 +85,83 @@ OTHER_KEY='hello world'
 	}
 }
 
+func TestParse_AcceptedScheduleFamiliesAndNativeSyntaxCheck(t *testing.T) {
+	schedules := []string{
+		"0 * * * *",
+		"*/15 * * * *",
+		"0 0 * * 0",
+		"0 0 * * 7",
+		"0 0 * * 1-7",
+		"0 0 * * 0-7/2",
+		"0 0 * * 5,7",
+		"0 0 * * 7-7",
+		"0 0 * * 7-7/1",
+		"@hourly",
+		"@daily",
+		"@midnight",
+		"@weekly",
+		"@monthly",
+		"@yearly",
+		"@annually",
+		"@reboot",
+	}
+
+	var cronrcBuilder strings.Builder
+	cronrcBuilder.WriteString("VALUE = hello\n")
+	for _, sched := range schedules {
+		cronrcBuilder.WriteString(sched + " true\n")
+	}
+
+	parsed, err := Parse(strings.NewReader(cronrcBuilder.String()), "/tmp/project/.cronrc")
+	if err != nil {
+		t.Fatalf("expected all standard schedule families to parse, got error: %v", err)
+	}
+	if len(parsed.Tasks) != len(schedules) {
+		t.Fatalf("tasks=%d, want %d", len(parsed.Tasks), len(schedules))
+	}
+
+	if crontabBin, err := exec.LookPath("crontab"); err == nil {
+		helpOut, _ := exec.Command(crontabBin, "-h").CombinedOutput()
+		if strings.Contains(string(helpOut), "-n") {
+			var crontabLines strings.Builder
+			for _, task := range parsed.Tasks {
+				crontabLines.WriteString(task.Schedule + " " + task.Command + "\n")
+			}
+			tmpDir := t.TempDir()
+			tmpCrontab := filepath.Join(tmpDir, "test.crontab")
+			if err := os.WriteFile(tmpCrontab, []byte(crontabLines.String()), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			checkCmd := exec.Command(crontabBin, "-n", "test.crontab")
+			checkCmd.Dir = tmpDir
+			if out, err := checkCmd.CombinedOutput(); err != nil {
+				t.Fatalf("native crontab -n rejected accepted schedules: %v: %s", err, out)
+			}
+		}
+	}
+}
+
 func TestParse_InvalidSchedule(t *testing.T) {
 	tests := []struct {
-		name  string
-		input string
+		name    string
+		input   string
+		wantErr string
 	}{
-		{"invalid fields", "invalid schedule string here"},
-		{"missing command for descriptor", "@daily"},
-		{"missing duration for @every", "@every"},
-		{"invalid cron format", "99 99 99 99 99 echo bad"},
+		{"invalid fields", "invalid schedule string here", "expected at least 5 schedule fields"},
+		{"missing command for descriptor", "@daily", "expected schedule and command"},
+		{"unsupported @every interval", "@every 2h ./worker.sh", "unsupported @every"},
+		{"missing duration for @every", "@every", "expected schedule and command"},
+		{"unknown descriptor", "@fortnightly ./worker.sh", "invalid schedule descriptor"},
+		{"invalid cron format", "99 99 99 99 99 echo bad", "invalid cron schedule"},
+		{"invalid dow 8", "0 0 * * 8 echo bad", "invalid cron schedule"},
+		{"invalid dow range 7-5", "0 0 * * 7-5 echo bad", "invalid cron schedule"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := Parse(strings.NewReader(tt.input), "/tmp/.cronrc")
-			if err == nil {
-				t.Fatalf("expected error for %q, got nil", tt.input)
+			if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+				t.Fatalf("for %q: error=%v, want containing %q", tt.input, err, tt.wantErr)
 			}
 		})
 	}

@@ -32,8 +32,19 @@ type File struct {
 }
 
 var (
-	envVarRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*=`)
-	cronParser  = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
+	envVarRegex = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*[ \t]*=`)
+	cronParser  = cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+
+	validDescriptors = map[string]bool{
+		"@reboot":   true,
+		"@yearly":   true,
+		"@annually": true,
+		"@monthly":  true,
+		"@weekly":   true,
+		"@daily":    true,
+		"@midnight": true,
+		"@hourly":   true,
+	}
 )
 
 // ComputeHash returns the SHA-256 hexadecimal hash of content.
@@ -104,6 +115,36 @@ func Parse(r io.Reader, filePath string) (*File, error) {
 	return file, nil
 }
 
+func normalizeDowField(dow string) string {
+	parts := strings.Split(dow, ",")
+	normalized := make([]string, 0, len(parts))
+	for _, part := range parts {
+		base, step, hasStep := strings.Cut(part, "/")
+		if base == "7" && !hasStep {
+			normalized = append(normalized, "0")
+			continue
+		}
+		if low, high, isRange := strings.Cut(base, "-"); isRange && high == "7" && len(low) == 1 && low[0] >= '0' && low[0] <= '7' {
+			if low == "7" {
+				if hasStep {
+					normalized = append(normalized, "0-0/"+step)
+				} else {
+					normalized = append(normalized, "0")
+				}
+				continue
+			}
+			if hasStep {
+				normalized = append(normalized, low+"-6/"+step)
+			} else {
+				normalized = append(normalized, low+"-6,0")
+			}
+			continue
+		}
+		normalized = append(normalized, part)
+	}
+	return strings.Join(normalized, ",")
+}
+
 func parseCronLine(line string, lineNum int, raw string) (*Task, error) {
 	// Check for descriptor like @daily, @hourly, @weekly, @monthly, @yearly, @annually, @midnight, @reboot
 	if strings.HasPrefix(line, "@") {
@@ -112,25 +153,14 @@ func parseCronLine(line string, lineNum int, raw string) (*Task, error) {
 			return nil, fmt.Errorf("invalid descriptor line: expected schedule and command")
 		}
 		schedule := fields[0]
-		// Handle @every <duration> which has two tokens for schedule
-		var cmdStartIdx int
 		if schedule == "@every" {
-			if len(fields) < 3 {
-				return nil, fmt.Errorf("invalid @every schedule: missing duration and command")
-			}
-			schedule = fields[0] + " " + fields[1]
-			cmdStartIdx = 2
-		} else {
-			cmdStartIdx = 1
+			return nil, fmt.Errorf("unsupported @every interval schedule: system crontab only supports 5-field schedules or @reboot, @yearly, @annually, @monthly, @weekly, @daily, @midnight, @hourly")
+		}
+		if !validDescriptors[schedule] {
+			return nil, fmt.Errorf("invalid schedule descriptor %q: supported descriptors are @reboot, @yearly, @annually, @monthly, @weekly, @daily, @midnight, @hourly", schedule)
 		}
 
-		if schedule != "@reboot" {
-			if _, err := cronParser.Parse(schedule); err != nil {
-				return nil, fmt.Errorf("invalid schedule descriptor %q: %w", schedule, err)
-			}
-		}
-
-		command := strings.TrimSpace(strings.Join(fields[cmdStartIdx:], " "))
+		command := strings.TrimSpace(strings.Join(fields[1:], " "))
 		return &Task{
 			LineNumber: lineNum,
 			Schedule:   schedule,
@@ -146,7 +176,8 @@ func parseCronLine(line string, lineNum int, raw string) (*Task, error) {
 	}
 
 	schedule := strings.Join(fields[:5], " ")
-	if _, err := cronParser.Parse(schedule); err != nil {
+	validationSchedule := strings.Join([]string{fields[0], fields[1], fields[2], fields[3], normalizeDowField(fields[4])}, " ")
+	if _, err := cronParser.Parse(validationSchedule); err != nil {
 		return nil, fmt.Errorf("invalid cron schedule %q: %w", schedule, err)
 	}
 
