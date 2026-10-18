@@ -2,6 +2,7 @@ package store
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -84,11 +85,47 @@ func (s *Store) load() error {
 	return nil
 }
 
-func (s *Store) saveLocked() error {
+func (s *Store) withFileLock(fn func() error) error {
 	if err := os.MkdirAll(filepath.Dir(s.filePath), 0o755); err != nil {
 		return fmt.Errorf("creating state directory: %w", err)
 	}
 
+	lockPath := s.filePath + ".lock"
+	lockF, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return fmt.Errorf("locking store file: %w", err)
+	}
+	if err := lockFile(lockF); err != nil {
+		_ = lockF.Close()
+		return fmt.Errorf("locking store file: %w", err)
+	}
+	defer func() {
+		_ = unlockFile(lockF)
+		_ = lockF.Close()
+	}()
+
+	return fn()
+}
+
+func (s *Store) reloadLocked() error {
+	info, err := os.Stat(s.filePath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			s.records = make(map[string]Record)
+			return nil
+		}
+		return fmt.Errorf("loading store from %s: %w", s.filePath, err)
+	}
+	if info.IsDir() {
+		return nil
+	}
+	if err := s.load(); err != nil {
+		return fmt.Errorf("loading store from %s: %w", s.filePath, err)
+	}
+	return nil
+}
+
+func (s *Store) saveLocked() error {
 	list := make([]Record, 0, len(s.records))
 	for _, rec := range s.records {
 		list = append(list, rec)
@@ -103,12 +140,20 @@ func (s *Store) saveLocked() error {
 		return fmt.Errorf("marshaling store data: %w", err)
 	}
 
-	tmpFile := s.filePath + ".tmp"
-	if err := os.WriteFile(tmpFile, data, 0o644); err != nil {
+	tmpFile, err := os.CreateTemp(filepath.Dir(s.filePath), filepath.Base(s.filePath)+".*.tmp")
+	if err != nil {
+		return fmt.Errorf("writing store temp file: %w", err)
+	}
+	tmpPath := tmpFile.Name()
+	_, writeErr := tmpFile.Write(data)
+	closeErr := tmpFile.Close()
+	if err := errors.Join(writeErr, closeErr); err != nil {
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("writing store temp file: %w", err)
 	}
 
-	if err := os.Rename(tmpFile, s.filePath); err != nil {
+	if err := os.Rename(tmpPath, s.filePath); err != nil {
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("committing store file: %w", err)
 	}
 	return nil
@@ -137,8 +182,14 @@ func (s *Store) Allow(dir string) (*Record, error) {
 		AllowedAt: time.Now().UTC(),
 	}
 
-	s.records[absDir] = rec
-	if err := s.saveLocked(); err != nil {
+	err = s.withFileLock(func() error {
+		if err := s.reloadLocked(); err != nil {
+			return err
+		}
+		s.records[absDir] = rec
+		return s.saveLocked()
+	})
+	if err != nil {
 		return nil, err
 	}
 	return &rec, nil
@@ -154,14 +205,21 @@ func (s *Store) Deny(dir string) error {
 		return fmt.Errorf("resolving directory path: %w", err)
 	}
 
-	delete(s.records, absDir)
-	return s.saveLocked()
+	return s.withFileLock(func() error {
+		if err := s.reloadLocked(); err != nil {
+			return err
+		}
+		delete(s.records, absDir)
+		return s.saveLocked()
+	})
 }
 
 // Get returns the stored record for dir.
 func (s *Store) Get(dir string) (*Record, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_ = s.reloadLocked()
 
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
@@ -177,8 +235,10 @@ func (s *Store) Get(dir string) (*Record, bool) {
 
 // List returns a sorted copy of all stored records.
 func (s *Store) List() []Record {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	_ = s.reloadLocked()
 
 	list := make([]Record, 0, len(s.records))
 	for _, rec := range s.records {
@@ -201,9 +261,10 @@ func (s *Store) Status(dir string) (DirStatus, *Record, error) {
 	cronrcPath := filepath.Join(absDir, ".cronrc")
 	fileInfo, statErr := os.Stat(cronrcPath)
 
-	s.mu.RLock()
+	s.mu.Lock()
+	_ = s.reloadLocked()
 	rec, hasRecord := s.records[absDir]
-	s.mu.RUnlock()
+	s.mu.Unlock()
 
 	if statErr != nil {
 		if os.IsNotExist(statErr) {
@@ -243,18 +304,24 @@ func (s *Store) Prune() ([]string, error) {
 	defer s.mu.Unlock()
 
 	var pruned []string
-	for dir := range s.records {
-		cronrcPath := filepath.Join(dir, ".cronrc")
-		if info, err := os.Stat(cronrcPath); err != nil || info.IsDir() {
-			delete(s.records, dir)
-			pruned = append(pruned, dir)
+	err := s.withFileLock(func() error {
+		if err := s.reloadLocked(); err != nil {
+			return err
 		}
-	}
-
-	if len(pruned) > 0 {
-		if err := s.saveLocked(); err != nil {
-			return nil, err
+		for dir := range s.records {
+			cronrcPath := filepath.Join(dir, ".cronrc")
+			if info, err := os.Stat(cronrcPath); err != nil || info.IsDir() {
+				delete(s.records, dir)
+				pruned = append(pruned, dir)
+			}
 		}
+		if len(pruned) > 0 {
+			return s.saveLocked()
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	sort.Strings(pruned)
 	return pruned, nil

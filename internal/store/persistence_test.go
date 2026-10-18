@@ -106,13 +106,16 @@ func TestStoreCopiesAndSortedPersistence(t *testing.T) {
 }
 
 func TestStorePersistenceErrors(t *testing.T) {
-	for _, failure := range []string{"parent is file", "temp is directory", "destination is directory"} {
+	for _, failure := range []string{"parent is file", "lock is directory", "temp is directory", "destination is directory", "corrupt reload"} {
 		t.Run(failure, func(t *testing.T) {
 			dir := t.TempDir()
 			path := filepath.Join(dir, "state", "allowed.json")
 			st, err := NewStore(path)
 			if err != nil {
 				t.Fatal(err)
+			}
+			if st.Path() != path {
+				t.Fatalf("st.Path()=%q, want %q", st.Path(), path)
 			}
 			project := filepath.Join(dir, "project")
 			if err := os.Mkdir(project, 0o700); err != nil {
@@ -123,22 +126,43 @@ func TestStorePersistenceErrors(t *testing.T) {
 			switch failure {
 			case "parent is file":
 				writeStoreFile(t, filepath.Dir(path), "blocked")
-			case "temp is directory":
-				if err := os.MkdirAll(path+".tmp", 0o700); err != nil {
+			case "lock is directory":
+				if err := os.MkdirAll(path+".lock", 0o700); err != nil {
 					t.Fatal(err)
 				}
+				want = "locking store file"
+			case "temp is directory":
+				if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+					t.Fatal(err)
+				}
+				writeStoreFile(t, path+".lock", "")
+				if err := os.Chmod(filepath.Dir(path), 0o500); err != nil {
+					t.Fatal(err)
+				}
+				t.Cleanup(func() { _ = os.Chmod(filepath.Dir(path), 0o700) })
 				want = "writing store temp file"
 			case "destination is directory":
 				if err := os.MkdirAll(path, 0o700); err != nil {
 					t.Fatal(err)
 				}
 				want = "committing store file"
+			case "corrupt reload":
+				if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+					t.Fatal(err)
+				}
+				writeStoreFile(t, path, "{corrupt")
+				want = "loading store"
 			}
 			if _, err := st.Allow(project); err == nil || !strings.Contains(err.Error(), want) {
 				t.Fatalf("allow error=%v, want %q", err, want)
 			}
 			if err := st.Deny(project); err == nil || !strings.Contains(err.Error(), want) {
 				t.Fatalf("deny error=%v, want %q", err, want)
+			}
+			if failure == "corrupt reload" {
+				if _, err := st.Prune(); err == nil || !strings.Contains(err.Error(), want) {
+					t.Fatalf("prune error=%v, want %q", err, want)
+				}
 			}
 		})
 	}
@@ -169,9 +193,11 @@ func TestStoreInvalidCronrcAndPruneFailure(t *testing.T) {
 	if status, _, err := st.Status(dir); err != nil || status != StatusMissingCronrc {
 		t.Fatalf("directory .cronrc status=%s error=%v", status, err)
 	}
-	if err := os.Mkdir(path+".tmp", 0o700); err != nil {
+	writeStoreFile(t, path+".lock", "")
+	if err := os.Chmod(dir, 0o500); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
 	if _, err := st.Prune(); err == nil || !strings.Contains(err.Error(), "writing store temp file") {
 		t.Fatalf("expected pruning persistence error, got %v", err)
 	}
@@ -202,5 +228,140 @@ func TestStoreUnavailableWorkingDirectory(t *testing.T) {
 	}
 	if rec, ok := st.Get("relative"); ok || rec != nil {
 		t.Fatalf("unexpected record: %+v, %v", rec, ok)
+	}
+}
+
+func TestStoreOverlappingWritersPreserveRevocationsAndApprovals(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "state", "allowed.json")
+
+	dirA := filepath.Join(dir, "proj-a")
+	dirB := filepath.Join(dir, "proj-b")
+	dirC := filepath.Join(dir, "proj-c")
+	for _, p := range []string{dirA, dirB, dirC} {
+		if err := os.MkdirAll(p, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		writeStoreFile(t, filepath.Join(p, ".cronrc"), "@daily true\n")
+	}
+
+	storeA, err := NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := storeA.Allow(dirA); err != nil {
+		t.Fatal(err)
+	}
+
+	// Second store loads snapshot while dirA is still allowed.
+	storeB, err := NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// First store revokes dirA; second store approves dirB.
+	if err := storeA.Deny(dirA); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := storeB.Allow(dirB); err != nil {
+		t.Fatal(err)
+	}
+
+	reopened, err := NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, st := range []*Store{storeA, storeB, reopened} {
+		if status, _, err := st.Status(dirA); err != nil || status != StatusUnauthorized {
+			t.Fatalf("revoked dirA resurrected: status=%s err=%v", status, err)
+		}
+		if status, _, err := st.Status(dirB); err != nil || status != StatusAllowed {
+			t.Fatalf("dirB approval lost: status=%s err=%v", status, err)
+		}
+	}
+
+	// Independent store approves dirC while storeA prunes removed dirB.
+	storeC, err := NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := storeC.Allow(dirC); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(dirB, ".cronrc")); err != nil {
+		t.Fatal(err)
+	}
+	pruned, err := storeA.Prune()
+	if err != nil || !reflect.DeepEqual(pruned, []string{dirB}) {
+		t.Fatalf("pruned=%v err=%v, want [%s]", pruned, err, dirB)
+	}
+	reopenedAfterPrune, err := NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status, _, err := reopenedAfterPrune.Status(dirC); err != nil || status != StatusAllowed {
+		t.Fatalf("dirC lost during prune: status=%s err=%v", status, err)
+	}
+
+	// Verify that holding the file lock blocks a concurrent writer until unlock.
+	lockF, err := os.OpenFile(path+".lock", os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = lockF.Close() }()
+	if err := lockFile(lockF); err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := storeB.Allow(dirA)
+		done <- err
+	}()
+
+	select {
+	case err := <-done:
+		t.Fatalf("Allow completed while lock was held: err=%v", err)
+	default:
+	}
+
+	if err := unlockFile(lockF); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatalf("Allow failed after lock release: %v", err)
+	}
+}
+
+func TestStoreOwnedTemporaryFile(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "allowed.json")
+	project := filepath.Join(dir, "project")
+	if err := os.MkdirAll(project, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeStoreFile(t, filepath.Join(project, ".cronrc"), "@daily true\n")
+
+	unownedTmp := path + ".tmp"
+	writeStoreFile(t, unownedTmp, "unowned-content")
+
+	st, err := NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Allow(project); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.Deny(project); err != nil {
+		t.Fatal(err)
+	}
+
+	data, err := os.ReadFile(unownedTmp)
+	if err != nil || string(data) != "unowned-content" {
+		t.Fatalf("unowned .tmp file clobbered: data=%q err=%v", data, err)
+	}
+	matches, err := filepath.Glob(path + ".*.tmp")
+	if err != nil || len(matches) != 0 {
+		t.Fatalf("owned temp files not cleaned up: matches=%v err=%v", matches, err)
 	}
 }

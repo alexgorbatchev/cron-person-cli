@@ -74,9 +74,12 @@ func TestCLIDirectoryFailures(t *testing.T) {
 			case "invalid schedule", "invalid syntax":
 				writeCLIFile(t, path, "invalid schedule\n")
 			case "allow persistence", "deny persistence":
-				if err := os.Mkdir(state+".tmp", 0o700); err != nil {
+				writeCLIFile(t, state+".lock", "")
+				stateDir := filepath.Dir(state)
+				if err := os.Chmod(stateDir, 0o500); err != nil {
 					t.Fatal(err)
 				}
+				t.Cleanup(func() { _ = os.Chmod(stateDir, 0o700) })
 			case "status filesystem":
 				if err := os.Remove(path); err != nil {
 					t.Fatal(err)
