@@ -459,3 +459,40 @@ func TestGenerateBlock_RejectsInvalidControlCharacters(t *testing.T) {
 		t.Fatal("expected error for NUL byte in command")
 	}
 }
+
+func TestGenerateBlock_RejectsModifiedSnapshotAfterStatusCheck(t *testing.T) {
+	dir := t.TempDir()
+	state := filepath.Join(dir, "state.json")
+	st, err := store.NewStore(state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projectDir := filepath.Join(dir, "app")
+	if err := os.MkdirAll(projectDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	cronrcPath := filepath.Join(projectDir, ".cronrc")
+	if err := os.WriteFile(cronrcPath, []byte("@hourly approved-task\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Allow(projectDir); err != nil {
+		t.Fatal(err)
+	}
+	status, checkedRec, err := st.Status(projectDir)
+	if err != nil || status != store.StatusAllowed || checkedRec == nil {
+		t.Fatalf("status=%s rec=%v err=%v", status, checkedRec, err)
+	}
+
+	// Replace .cronrc after Status check before GenerateBlock reads it.
+	if err := os.WriteFile(cronrcPath, []byte("@hourly unapproved-task\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	block, err := GenerateBlock([]store.Record{*checkedRec}, "/bin/cron-person", state)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(block, "unapproved-task") {
+		t.Fatalf("GenerateBlock emitted tasks from unapproved snapshot:\n%s", block)
+	}
+}

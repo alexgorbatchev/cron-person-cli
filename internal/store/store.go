@@ -253,9 +253,15 @@ func (s *Store) List() []Record {
 
 // Status inspects disk and compares with store to determine the directory's status.
 func (s *Store) Status(dir string) (DirStatus, *Record, error) {
+	status, rec, _, err := s.Inspect(dir)
+	return status, rec, err
+}
+
+// Inspect reads a single .cronrc snapshot from dir and compares its raw-byte hash against the store.
+func (s *Store) Inspect(dir string) (DirStatus, *Record, []byte, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
-		return "", nil, fmt.Errorf("resolving path: %w", err)
+		return "", nil, nil, fmt.Errorf("resolving path: %w", err)
 	}
 
 	cronrcPath := filepath.Join(absDir, ".cronrc")
@@ -269,33 +275,33 @@ func (s *Store) Status(dir string) (DirStatus, *Record, error) {
 	if statErr != nil {
 		if os.IsNotExist(statErr) {
 			if hasRecord {
-				return StatusOrphan, &rec, nil
+				return StatusOrphan, &rec, nil, nil
 			}
-			return StatusMissingCronrc, nil, nil
+			return StatusMissingCronrc, nil, nil, nil
 		}
-		return "", nil, fmt.Errorf("checking .cronrc: %w", statErr)
+		return "", nil, nil, fmt.Errorf("checking .cronrc: %w", statErr)
 	}
 
 	if fileInfo.IsDir() {
-		return StatusMissingCronrc, nil, nil
+		return StatusMissingCronrc, nil, nil, nil
 	}
 
 	data, err := os.ReadFile(cronrcPath)
 	if err != nil {
-		return "", nil, fmt.Errorf("reading .cronrc: %w", err)
+		return "", nil, nil, fmt.Errorf("reading .cronrc: %w", err)
 	}
 
 	currentHash := cronrc.ComputeHash(data)
 
 	if !hasRecord {
-		return StatusUnauthorized, nil, nil
+		return StatusUnauthorized, nil, nil, nil
 	}
 
 	if rec.Hash != currentHash {
-		return StatusChanged, &rec, nil
+		return StatusChanged, &rec, nil, nil
 	}
 
-	return StatusAllowed, &rec, nil
+	return StatusAllowed, &rec, data, nil
 }
 
 // Prune removes records for directories that no longer exist or no longer have a .cronrc file.

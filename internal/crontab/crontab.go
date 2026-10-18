@@ -47,8 +47,8 @@ func GenerateBlock(records []store.Record, binPath, storePath string) (string, e
 			return "", fmt.Errorf("directory path must not be empty or contain line breaks or NUL")
 		}
 		parsed, err := cronrc.ParseFile(rec.Path)
-		if err != nil {
-			// Skip files that fail parsing or are missing
+		if err != nil || (rec.Hash != "" && parsed.Hash != rec.Hash) {
+			// Skip files that fail parsing, are missing, or no longer match their approved hash
 			continue
 		}
 

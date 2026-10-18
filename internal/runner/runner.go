@@ -1,6 +1,7 @@
 package runner
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -42,8 +43,8 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 		return fmt.Errorf("resolving target directory %q: %w", opts.Dir, err)
 	}
 
-	// 1. Verify authorization status
-	dirStatus, _, err := r.store.Status(absDir)
+	// 1. Verify authorization status and read the validated snapshot
+	dirStatus, _, snapshot, err := r.store.Inspect(absDir)
 	if err != nil {
 		return fmt.Errorf("checking authorization for %s: %w", absDir, err)
 	}
@@ -63,9 +64,9 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 		return fmt.Errorf("directory %s has invalid status: %s", absDir, dirStatus)
 	}
 
-	// 2. Parse .cronrc to obtain directory-specific environment variables
+	// 2. Parse the validated .cronrc snapshot to obtain directory-specific environment variables
 	cronrcPath := filepath.Join(absDir, ".cronrc")
-	parsed, err := cronrc.ParseFile(cronrcPath)
+	parsed, err := cronrc.Parse(bytes.NewReader(snapshot), cronrcPath)
 	if err != nil {
 		return fmt.Errorf("parsing %s: %w", cronrcPath, err)
 	}
