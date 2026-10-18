@@ -25,6 +25,7 @@ func TestRunner_Exec_Success(t *testing.T) {
 	}
 
 	cronrcContent := `
+SHELL=/bin/sh
 CUSTOM_ENV_VAR=hello_world
 @hourly pwd && echo $CUSTOM_ENV_VAR
 `
@@ -39,26 +40,29 @@ CUSTOM_ENV_VAR=hello_world
 
 	r := NewRunner(st)
 
-	var stdout, stderr bytes.Buffer
-	execOpts := ExecOptions{
-		Dir:     projectDir,
-		Command: "pwd && echo \"ENV=$CUSTOM_ENV_VAR\"",
-		Stdout:  &stdout,
-		Stderr:  &stderr,
-	}
+	for _, ambientShell := range []string{"/bin/sh", "", "/does-not-exist"} {
+		t.Setenv("SHELL", ambientShell)
+		var stdout, stderr bytes.Buffer
+		execOpts := ExecOptions{
+			Dir:     projectDir,
+			Command: "pwd && echo \"ENV=$CUSTOM_ENV_VAR\"",
+			Stdout:  &stdout,
+			Stderr:  &stderr,
+		}
 
-	err = r.Exec(context.Background(), execOpts)
-	if err != nil {
-		t.Fatalf("unexpected exec error: %v", err)
-	}
+		err = r.Exec(context.Background(), execOpts)
+		if err != nil {
+			t.Fatalf("unexpected exec error with ambient SHELL=%q: %v", ambientShell, err)
+		}
 
-	out := stdout.String()
-	// Should have executed with cwd = projectDir
-	if !strings.Contains(out, projectDir) {
-		t.Errorf("expected output to contain cwd %q, got: %s", projectDir, out)
-	}
-	if !strings.Contains(out, "ENV=hello_world") {
-		t.Errorf("expected output to contain ENV=hello_world, got: %s", out)
+		out := stdout.String()
+		// Should have executed with cwd = projectDir
+		if !strings.Contains(out, projectDir) {
+			t.Errorf("expected output to contain cwd %q, got: %s", projectDir, out)
+		}
+		if !strings.Contains(out, "ENV=hello_world") {
+			t.Errorf("expected output to contain ENV=hello_world, got: %s", out)
+		}
 	}
 }
 

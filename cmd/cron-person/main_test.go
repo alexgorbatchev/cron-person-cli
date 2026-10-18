@@ -58,6 +58,7 @@ func TestREADMEInstallationURLMatchesPublishedRelease(t *testing.T) {
 
 func TestCLI_Workflow_AllowDenyCheckList(t *testing.T) {
 	t.Setenv("AGENT", "0")
+	t.Setenv("SHELL", "/does-not-exist")
 	tempDir := t.TempDir()
 	storeFile := filepath.Join(tempDir, "state.json")
 	projectDir := filepath.Join(tempDir, "sample-project")
@@ -67,6 +68,7 @@ func TestCLI_Workflow_AllowDenyCheckList(t *testing.T) {
 
 	cronrcPath := filepath.Join(projectDir, ".cronrc")
 	cronrcContent := `
+SHELL=/bin/sh
 PROJECT_ENV=staging
 @hourly ./sync.sh
 0 2 * * * ./backup.sh
