@@ -21,8 +21,10 @@ func TestDefaultStorePath(t *testing.T) {
 		name, stateHome, home, want, wantErr string
 	}{
 		{"xdg", filepath.Join(dir, "state"), "", filepath.Join(dir, "state", "cron-person", "allowed.json"), ""},
+		{"relative xdg uses home fallback", "relative-state", dir, filepath.Join(dir, ".local", "state", "cron-person", "allowed.json"), ""},
 		{"home fallback", "", dir, filepath.Join(dir, ".local", "state", "cron-person", "allowed.json"), ""},
 		{"missing home", "", "", "", "resolving user home directory"},
+		{"relative xdg and missing home", "relative-state", "", "", "resolving user home directory"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("XDG_STATE_HOME", tt.stateHome)

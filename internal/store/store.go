@@ -44,7 +44,7 @@ func (s *Store) Path() string { return s.filePath }
 
 // DefaultStorePath returns the standard XDG state file path for cron-person.
 func DefaultStorePath() (string, error) {
-	if stateHome := os.Getenv("XDG_STATE_HOME"); stateHome != "" {
+	if stateHome := os.Getenv("XDG_STATE_HOME"); filepath.IsAbs(stateHome) {
 		return filepath.Join(stateHome, "cron-person", "allowed.json"), nil
 	}
 	home, err := os.UserHomeDir()
