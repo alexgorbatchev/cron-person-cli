@@ -173,3 +173,101 @@ func TestGeneratedCronExecution(t *testing.T) {
 		}
 	})
 }
+
+func TestJustRunCrontabSyncProducesDurableExecutable(t *testing.T) {
+	justBin, err := exec.LookPath("just")
+	if err != nil {
+		t.Skip("just not installed")
+	}
+
+	repoRoot, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	fixtureDir := filepath.Join(repoRoot, "testdata")
+	workDir := t.TempDir()
+
+	for _, name := range []string{"go.mod", "go.sum", "cmd", "internal"} {
+		if err := os.Symlink(filepath.Join(repoRoot, name), filepath.Join(workDir, name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	justfileBytes, err := os.ReadFile(filepath.Join(repoRoot, "justfile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(workDir, "justfile"), justfileBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	crontabFile := filepath.Join(workDir, "crontab")
+	writeCLIFile(t, crontabFile, "")
+	statePath := filepath.Join(workDir, "state.json")
+	projectDir := filepath.Join(workDir, "project")
+	if err := os.MkdirAll(projectDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeCLIFile(t, filepath.Join(projectDir, ".cronrc"), "VERIFY_VALUE=durable-ok\n@hourly printf '%s' \"$VERIFY_VALUE\" > result\n")
+
+	ephemeralTmp := filepath.Join(t.TempDir(), "gotmp")
+	if err := os.MkdirAll(ephemeralTmp, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	env := append(os.Environ(),
+		"PATH="+fixtureDir+string(os.PathListSeparator)+os.Getenv("PATH"),
+		"GOTMPDIR="+ephemeralTmp,
+		"TEST_CRONTAB_FILE="+crontabFile,
+		"TEST_CRONTAB_READ_ERROR=",
+		"TEST_CRONTAB_WRITE_ERROR=",
+		"GOPROXY=off",
+		"GOSUMDB=off",
+	)
+
+	for _, recipeArgs := range [][]string{
+		{"run", "--store", statePath, "allow", projectDir},
+		{"run-ai", "--store", statePath, "crontab", "sync"},
+	} {
+		cmd := exec.Command(justBin, recipeArgs...)
+		cmd.Dir = workDir
+		cmd.Env = env
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("just %v failed: %v: %s", recipeArgs, err, out)
+		}
+	}
+
+	if err := os.RemoveAll(ephemeralTmp); err != nil {
+		t.Fatal(err)
+	}
+
+	installed, err := os.ReadFile(crontabFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var cronCmd string
+	for _, line := range strings.Split(string(installed), "\n") {
+		if strings.HasPrefix(line, "@hourly ") {
+			cronCmd = strings.TrimPrefix(line, "@hourly ")
+			break
+		}
+	}
+	if cronCmd == "" {
+		t.Fatalf("missing @hourly entry in crontab:\n%s", installed)
+	}
+	wantBin := filepath.Join(workDir, "bin", "cron-person")
+	if !strings.Contains(cronCmd, wantBin) {
+		t.Fatalf("expected crontab entry to reference durable binary %q, got: %s", wantBin, cronCmd)
+	}
+
+	cronCmd = strings.ReplaceAll(cronCmd, `\%`, "%")
+	runCmd := exec.Command("/bin/sh", "-c", cronCmd)
+	runCmd.Dir = workDir
+	runCmd.Env = append(env, "SHELL=/bin/sh")
+	if out, err := runCmd.CombinedOutput(); err != nil {
+		t.Fatalf("executing synced crontab entry after just run exited failed: %v: %s", err, out)
+	}
+
+	got, err := os.ReadFile(filepath.Join(projectDir, "result"))
+	if err != nil || string(got) != "durable-ok" {
+		t.Fatalf("result=%q err=%v, want %q", got, err, "durable-ok")
+	}
+}

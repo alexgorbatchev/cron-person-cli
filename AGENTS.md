@@ -1,6 +1,6 @@
 ---
 created_on: 2026-09-24 17:53
-last_modified: 2026-10-16 10:27
+last_modified: 2026-10-18 16:46
 status: current
 ---
 
@@ -11,8 +11,8 @@ Higher-order per-directory crontab manager with direnv-style shell integration
 ## Commands
 - **Build Local Binary:** `just build` (compiles to `bin/cron-person`)
 - **Install Development Build:** `just dev-bootstrap` builds version `999.0.0-dev.<revision>` and atomically replaces the payload referenced by the existing dotfiles shim. Override the dotfiles root with `just dev-bootstrap /path/to/dotfiles`; keep the shim and its symlinks intact.
-- **Run CLI with Arguments:** `just run [args...]`
-- **Run CLI in Agent Mode:** `just run-ai [args...]` (`AGENT=1`)
+- **Run CLI with Arguments:** `just run [args...]` (builds `bin/cron-person` and runs `./bin/cron-person`)
+- **Run CLI in Agent Mode:** `just run-ai [args...]` (`AGENT=1 ./bin/cron-person`)
 - **Run Tests:** `just test` (`go test -v ./...`)
 - **Run Static Analysis & Tests:** `just check` (`go vet ./... && go test -v ./...`)
 - **Run Linter / Static Analysis:** `just vet` or `just lint` (`go vet ./...`)

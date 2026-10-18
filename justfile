@@ -5,12 +5,12 @@ default:
     @just --list
 
 # Run CLI in human mode (default)
-run *args:
-    go run ./cmd/cron-person {{ args }}
+run *args: build
+    ./bin/cron-person {{ args }}
 
 # Run CLI in agent-facing mode
-run-ai *args:
-    AGENT=1 go run ./cmd/cron-person {{ args }}
+run-ai *args: build
+    AGENT=1 ./bin/cron-person {{ args }}
 
 # Run test suite
 test:
