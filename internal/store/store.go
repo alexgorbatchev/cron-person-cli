@@ -56,13 +56,18 @@ func DefaultStorePath() (string, error) {
 
 // NewStore initializes a Store loaded from filePath.
 func NewStore(filePath string) (*Store, error) {
+	absPath, err := filepath.Abs(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("resolving store path %s: %w", filePath, err)
+	}
+
 	s := &Store{
-		filePath: filePath,
+		filePath: absPath,
 		records:  make(map[string]Record),
 	}
 
 	if err := s.load(); err != nil && !os.IsNotExist(err) {
-		return nil, fmt.Errorf("loading store from %s: %w", filePath, err)
+		return nil, fmt.Errorf("loading store from %s: %w", absPath, err)
 	}
 	return s, nil
 }

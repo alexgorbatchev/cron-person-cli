@@ -217,6 +217,9 @@ func TestStoreUnavailableWorkingDirectory(t *testing.T) {
 	if err := os.Remove(cwd); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := NewStore(filepath.Join("relative", "state.json")); err == nil {
+		t.Fatal("NewStore with relative path succeeded without a working directory")
+	}
 	if _, err := st.Allow("relative"); err == nil {
 		t.Fatal("allow succeeded without a working directory")
 	}
@@ -363,5 +366,36 @@ func TestStoreOwnedTemporaryFile(t *testing.T) {
 	matches, err := filepath.Glob(path + ".*.tmp")
 	if err != nil || len(matches) != 0 {
 		t.Fatalf("owned temp files not cleaned up: matches=%v err=%v", matches, err)
+	}
+}
+
+func TestNewStoreResolvesAbsolutePathAcrossWorkingDirectories(t *testing.T) {
+	base := t.TempDir()
+	dirA := filepath.Join(base, "dir-a")
+	dirB := filepath.Join(base, "dir-b")
+	project := filepath.Join(base, "project")
+	for _, d := range []string{dirA, dirB, project} {
+		if err := os.MkdirAll(d, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeStoreFile(t, filepath.Join(project, ".cronrc"), "@daily true\n")
+
+	t.Chdir(dirA)
+	st, err := NewStore(filepath.Join("relative-state", "allowed.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantPath := filepath.Join(dirA, "relative-state", "allowed.json")
+	if st.Path() != wantPath {
+		t.Fatalf("st.Path()=%q, want absolute %q", st.Path(), wantPath)
+	}
+
+	t.Chdir(dirB)
+	if _, err := st.Allow(project); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(wantPath); err != nil {
+		t.Fatalf("expected store file at %s, stat err=%v", wantPath, err)
 	}
 }

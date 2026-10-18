@@ -111,4 +111,65 @@ func TestGeneratedCronExecution(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("synced relative store and xdg default under clean cron env", func(t *testing.T) {
+		for _, mode := range []string{"relative-flag", "xdg-default"} {
+			t.Run(mode, func(t *testing.T) {
+				crontabPath := cliCrontab(t)
+				writeCLIFile(t, crontabPath, "")
+				workDir := t.TempDir()
+				cronRunDir := t.TempDir()
+				projectDir := filepath.Join(workDir, "project")
+				if err := os.MkdirAll(projectDir, 0o700); err != nil {
+					t.Fatal(err)
+				}
+				writeCLIFile(t, filepath.Join(projectDir, ".cronrc"), "VERIFY_VALUE=from-cronrc\n@hourly printf '%s' \"$VERIFY_VALUE\" > result\n")
+
+				t.Chdir(workDir)
+				syncXDG := filepath.Join(workDir, "sync-xdg")
+				t.Setenv("XDG_STATE_HOME", syncXDG)
+
+				var storeFlags []string
+				if mode == "relative-flag" {
+					storeFlags = []string{"--store", filepath.Join("rel-store", "allowed.json")}
+				}
+
+				requireCLIOutput(t, append(append([]string{}, storeFlags...), "allow", projectDir))
+				syncCmd := exec.Command(bin, append(append([]string{}, storeFlags...), "crontab", "sync")...)
+				syncCmd.Dir = workDir
+				syncCmd.Env = os.Environ()
+				if out, err := syncCmd.CombinedOutput(); err != nil {
+					t.Fatalf("crontab sync failed: %v: %s", err, out)
+				}
+
+				installed, err := os.ReadFile(crontabPath)
+				if err != nil {
+					t.Fatal(err)
+				}
+				var cronCmd string
+				for _, line := range strings.Split(string(installed), "\n") {
+					if strings.HasPrefix(line, "@hourly ") {
+						cronCmd = strings.TrimPrefix(line, "@hourly ")
+						break
+					}
+				}
+				if cronCmd == "" {
+					t.Fatalf("missing @hourly line in installed crontab:\n%s", installed)
+				}
+
+				// Execute from a different directory with XDG_STATE_HOME pointing to an empty directory.
+				cronCmd = strings.ReplaceAll(cronCmd, `\%`, "%")
+				cmd := exec.Command("/bin/sh", "-c", cronCmd)
+				cmd.Dir = cronRunDir
+				cmd.Env = append(os.Environ(), "SHELL=/bin/sh", "XDG_STATE_HOME="+filepath.Join(cronRunDir, "clean-xdg"))
+				if out, err := cmd.CombinedOutput(); err != nil {
+					t.Fatalf("scheduled command failed under clean cron env: %v: %s", err, out)
+				}
+				got, err := os.ReadFile(filepath.Join(projectDir, "result"))
+				if err != nil || string(got) != "from-cronrc" {
+					t.Fatalf("result=%q err=%v, want %q", got, err, "from-cronrc")
+				}
+			})
+		}
+	})
 }
