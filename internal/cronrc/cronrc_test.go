@@ -85,6 +85,29 @@ OTHER_KEY='hello world'
 	}
 }
 
+func TestParse_PreservesQuotedWhitespaceAndEscapedSeparators(t *testing.T) {
+	input := "@hourly   echo \"a  b\tc\" 'x   y' foo\\ \\ bar ; echo \"1  2\"\n" +
+		"0\t*\t*\t*\t*\tprintf '%s\\n' \"two  spaces\" 'tab\there' arg\\;escaped\n"
+
+	file, err := Parse(strings.NewReader(input), "/tmp/project/.cronrc")
+	if err != nil {
+		t.Fatalf("unexpected Parse error: %v", err)
+	}
+	if len(file.Tasks) != 2 {
+		t.Fatalf("expected 2 tasks, got %d", len(file.Tasks))
+	}
+
+	want0 := `echo "a  b	c" 'x   y' foo\ \ bar ; echo "1  2"`
+	if file.Tasks[0].Schedule != "@hourly" || file.Tasks[0].Command != want0 {
+		t.Fatalf("task 0 schedule=%q command=%q, want command=%q", file.Tasks[0].Schedule, file.Tasks[0].Command, want0)
+	}
+
+	want1 := `printf '%s\n' "two  spaces" 'tab	here' arg\;escaped`
+	if file.Tasks[1].Schedule != "0 * * * *" || file.Tasks[1].Command != want1 {
+		t.Fatalf("task 1 schedule=%q command=%q, want command=%q", file.Tasks[1].Schedule, file.Tasks[1].Command, want1)
+	}
+}
+
 func TestParse_AcceptedScheduleFamiliesAndNativeSyntaxCheck(t *testing.T) {
 	schedules := []string{
 		"0 * * * *",

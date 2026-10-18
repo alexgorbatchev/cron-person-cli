@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"unicode"
 
 	"github.com/robfig/cron/v3"
 )
@@ -145,11 +146,35 @@ func normalizeDowField(dow string) string {
 	return strings.Join(normalized, ",")
 }
 
+func splitScheduleAndCommand(line string, fieldCount int) ([]string, string, bool) {
+	fields := make([]string, 0, fieldCount)
+	idx := 0
+	for len(fields) < fieldCount {
+		for idx < len(line) && unicode.IsSpace(rune(line[idx])) {
+			idx++
+		}
+		if idx >= len(line) {
+			return nil, "", false
+		}
+		start := idx
+		for idx < len(line) && !unicode.IsSpace(rune(line[idx])) {
+			idx++
+		}
+		fields = append(fields, line[start:idx])
+	}
+
+	command := strings.TrimSpace(line[idx:])
+	if command == "" {
+		return nil, "", false
+	}
+	return fields, command, true
+}
+
 func parseCronLine(line string, lineNum int, raw string) (*Task, error) {
 	// Check for descriptor like @daily, @hourly, @weekly, @monthly, @yearly, @annually, @midnight, @reboot
 	if strings.HasPrefix(line, "@") {
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
+		fields, command, ok := splitScheduleAndCommand(line, 1)
+		if !ok {
 			return nil, fmt.Errorf("invalid descriptor line: expected schedule and command")
 		}
 		schedule := fields[0]
@@ -160,7 +185,6 @@ func parseCronLine(line string, lineNum int, raw string) (*Task, error) {
 			return nil, fmt.Errorf("invalid schedule descriptor %q: supported descriptors are @reboot, @yearly, @annually, @monthly, @weekly, @daily, @midnight, @hourly", schedule)
 		}
 
-		command := strings.TrimSpace(strings.Join(fields[1:], " "))
 		return &Task{
 			LineNumber: lineNum,
 			Schedule:   schedule,
@@ -170,18 +194,17 @@ func parseCronLine(line string, lineNum int, raw string) (*Task, error) {
 	}
 
 	// Standard 5-field cron: MINUTE HOUR DOM MONTH DOW COMMAND
-	fields := strings.Fields(line)
-	if len(fields) < 6 {
+	fields, command, ok := splitScheduleAndCommand(line, 5)
+	if !ok {
 		return nil, fmt.Errorf("invalid crontab line format: expected at least 5 schedule fields and a command")
 	}
 
-	schedule := strings.Join(fields[:5], " ")
+	schedule := strings.Join(fields, " ")
 	validationSchedule := strings.Join([]string{fields[0], fields[1], fields[2], fields[3], normalizeDowField(fields[4])}, " ")
 	if _, err := cronParser.Parse(validationSchedule); err != nil {
 		return nil, fmt.Errorf("invalid cron schedule %q: %w", schedule, err)
 	}
 
-	command := strings.TrimSpace(strings.Join(fields[5:], " "))
 	return &Task{
 		LineNumber: lineNum,
 		Schedule:   schedule,
