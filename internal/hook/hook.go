@@ -20,7 +20,7 @@ func GenerateHookScript(shellName string, binName string) (string, error) {
 		return fmt.Sprintf(`_cron_person_hook() {
   local previous_exit_status=$?;
   trap -- '' SIGINT;
-  eval "$("%s" hook export bash 2>/dev/null)";
+  "%s" hook export bash;
   trap - SIGINT;
   return $previous_exit_status;
 };
@@ -32,7 +32,7 @@ fi
 	case "zsh":
 		return fmt.Sprintf(`_cron_person_hook() {
   trap -- '' SIGINT;
-  eval "$("%s" hook export zsh 2>/dev/null)";
+  "%s" hook export zsh;
   trap - SIGINT;
 }
 typeset -ag precmd_functions;
@@ -47,7 +47,7 @@ fi
 
 	case "fish":
 		return fmt.Sprintf(`function __cron_person_export_eval --on-event fish_prompt;
-  "%s" hook export fish 2>/dev/null | source;
+  "%s" hook export fish;
 end
 `, binName), nil
 
