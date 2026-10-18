@@ -38,7 +38,7 @@ Download the prebuilt binary for your platform from the [latest release](https:/
 
 ```bash
 # macOS (Apple Silicon)
-curl -sSL https://github.com/alexgorbatchev/cron-person-cli/releases/latest/download/cron-person_0.1.0_darwin_arm64.tar.gz | tar -xz -C ~/.local/bin
+curl -fsSL https://github.com/alexgorbatchev/cron-person-cli/releases/latest/download/cron-person_0.0.1_darwin_arm64.tar.gz | tar -xz -C ~/.local/bin
 ```
 
 # Quick Start

@@ -36,6 +36,26 @@ func TestRootCommand_HelpAndVersion(t *testing.T) {
 	}
 }
 
+func TestREADMEInstallationURLMatchesPublishedRelease(t *testing.T) {
+	readmeBytes, err := os.ReadFile(filepath.Join("..", "..", "README.md"))
+	if err != nil {
+		t.Fatalf("reading README.md: %v", err)
+	}
+	readme := string(readmeBytes)
+
+	if version != "0.0.1" {
+		t.Fatalf("version=%q, want published release version \"0.0.1\"", version)
+	}
+
+	wantURL := "https://github.com/alexgorbatchev/cron-person-cli/releases/latest/download/cron-person_" + version + "_darwin_arm64.tar.gz"
+	if !strings.Contains(readme, wantURL) {
+		t.Fatalf("README.md missing versioned release archive URL %q", wantURL)
+	}
+	if !strings.Contains(readme, "curl -fsSL "+wantURL) {
+		t.Fatalf("README.md installation command should use curl -fsSL with %q", wantURL)
+	}
+}
+
 func TestCLI_Workflow_AllowDenyCheckList(t *testing.T) {
 	t.Setenv("AGENT", "0")
 	tempDir := t.TempDir()
