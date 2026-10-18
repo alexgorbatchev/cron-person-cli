@@ -143,7 +143,7 @@ func TestHelperCronPersonRunner(t *testing.T) {
 			break
 		}
 	}
-	if len(args) < 6 || args[0] != "--store" || args[2] != "exec" || args[4] != "--" {
+	if len(args) != 6 || args[0] != "--store" || args[2] != "exec" || args[4] != "--" {
 		os.Exit(2)
 	}
 	st, err := store.NewStore(args[1])
@@ -152,7 +152,7 @@ func TestHelperCronPersonRunner(t *testing.T) {
 	}
 	err = runner.NewRunner(st).Exec(context.Background(), runner.ExecOptions{
 		Dir:     args[3],
-		Command: strings.Join(args[5:], " "),
+		Command: args[5],
 		Stdout:  os.Stdout,
 		Stderr:  os.Stderr,
 	})
