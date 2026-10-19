@@ -19,9 +19,7 @@ func GenerateHookScript(shellName string, binName string) (string, error) {
 	case "bash":
 		return fmt.Sprintf(`_cron_person_hook() {
   local previous_exit_status=$?;
-  trap -- '' SIGINT;
   "%s" hook export bash;
-  trap - SIGINT;
   return $previous_exit_status;
 };
 if [[ ";${PROMPT_COMMAND:-};" != *";_cron_person_hook;"* ]]; then
@@ -31,9 +29,9 @@ fi
 
 	case "zsh":
 		return fmt.Sprintf(`_cron_person_hook() {
-  trap -- '' SIGINT;
+  local previous_exit_status=$?;
   "%s" hook export zsh;
-  trap - SIGINT;
+  return $previous_exit_status;
 }
 typeset -ag precmd_functions;
 if (( ! ${precmd_functions[(I)_cron_person_hook]} )); then
@@ -47,7 +45,9 @@ fi
 
 	case "fish":
 		return fmt.Sprintf(`function __cron_person_export_eval --on-event fish_prompt;
+  set -l previous_exit_status $status;
   "%s" hook export fish;
+  return $previous_exit_status;
 end
 `, binName), nil
 

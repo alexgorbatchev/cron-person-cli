@@ -205,3 +205,113 @@ func TestGeneratedHookScriptsDeliverWarnings(t *testing.T) {
 		})
 	}
 }
+
+func TestGeneratedHookScriptsPreserveExitStatusTrapsAndIdempotency(t *testing.T) {
+	for _, shell := range []string{"bash", "zsh", "fish"} {
+		script, err := GenerateHookScript(shell, "cron-person")
+		if err != nil {
+			t.Fatalf("GenerateHookScript(%s) error: %v", shell, err)
+		}
+		if strings.Contains(script, "trap ") {
+			t.Errorf("%s hook script modifies signal traps: %s", shell, script)
+		}
+		if !strings.Contains(script, "previous_exit_status") {
+			t.Errorf("%s hook script does not preserve previous_exit_status: %s", shell, script)
+		}
+	}
+
+	testExe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	baseDir := t.TempDir()
+	wrapperPath := filepath.Join(baseDir, "cron-person")
+	wrapperScript := "#!/bin/sh\nexec '" + strings.ReplaceAll(testExe, "'", `'"'"'`) + "' -test.run=^TestHelperHookExport$ -- \"$@\"\n"
+	if err := os.WriteFile(wrapperPath, []byte(wrapperScript), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	statePath := filepath.Join(baseDir, "allowed.json")
+	projectDir := filepath.Join(baseDir, "project")
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tc := range []struct {
+		shell         string
+		args          []string
+		checkSnippet  string
+		wantCountLine string
+	}{
+		{
+			shell: "bash",
+			args:  []string{"--noprofile", "--norc", "-c"},
+			checkSnippet: `trap 'echo prior-int-handler' INT
+__HOOK_SCRIPT__
+__HOOK_SCRIPT__
+(exit 17)
+_cron_person_hook
+printf 'fail_status=%d\n' "$?"
+true
+_cron_person_hook
+printf 'ok_status=%d\n' "$?"
+printf 'prompt_cmd=%s\n' "$PROMPT_COMMAND"
+trap -p INT
+`,
+			wantCountLine: "prompt_cmd=_cron_person_hook",
+		},
+		{
+			shell: "zsh",
+			args:  []string{"-f", "-c"},
+			checkSnippet: `trap 'echo prior-int-handler' INT
+__HOOK_SCRIPT__
+__HOOK_SCRIPT__
+(exit 17)
+_cron_person_hook
+printf 'fail_status=%d\n' "$?"
+true
+_cron_person_hook
+printf 'ok_status=%d\n' "$?"
+printf 'precmd_count=%d chpwd_count=%d\n' "${#precmd_functions}" "${#chpwd_functions}"
+trap
+`,
+			wantCountLine: "precmd_count=1 chpwd_count=1",
+		},
+	} {
+		t.Run(tc.shell, func(t *testing.T) {
+			shellBin, err := exec.LookPath(tc.shell)
+			if err != nil {
+				t.Skipf("%s not installed", tc.shell)
+			}
+
+			hookScript, err := GenerateHookScript(tc.shell, wrapperPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			script := strings.ReplaceAll(tc.checkSnippet, "__HOOK_SCRIPT__", hookScript)
+			cmd := exec.Command(shellBin, append(append([]string{}, tc.args...), script)...)
+			cmd.Dir = projectDir
+			cmd.Env = append(os.Environ(),
+				"GO_WANT_HOOK_EXPORT_HELPER=1",
+				"TEST_HOOK_STORE="+statePath,
+				"AGENT=0",
+			)
+			outBytes, err := cmd.CombinedOutput()
+			if err != nil {
+				t.Fatalf("%s lifecycle check failed: %v\noutput:\n%s", tc.shell, err, outBytes)
+			}
+			out := string(outBytes)
+			for _, want := range []string{
+				"fail_status=17",
+				"ok_status=0",
+				tc.wantCountLine,
+				"prior-int-handler",
+			} {
+				if !strings.Contains(out, want) {
+					t.Fatalf("%s output missing %q:\n%s", tc.shell, want, out)
+				}
+			}
+		})
+	}
+}
