@@ -45,12 +45,10 @@ func newCrontabSyncCommand() *cobra.Command {
 			}
 
 			if cobrahelptree.IsAgentMode() {
-				fmt.Fprintf(cmd.OutOrStdout(), "synced_directories: %d\nstatus: success\n", count)
-				return nil
+				return writeOutput(cmd, fmt.Sprintf("synced_directories: %d\nstatus: success\n", count))
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "[OK] Synchronized %d authorized directory task(s) into crontab\n", count)
-			return nil
+			return writeOutput(cmd, fmt.Sprintf("[OK] Synchronized %d authorized directory task(s) into crontab\n", count))
 		},
 	}
 }
@@ -85,8 +83,7 @@ func newCrontabShowCommand() *cobra.Command {
 				return err
 			}
 
-			fmt.Fprintln(cmd.OutOrStdout(), block)
-			return nil
+			return writeOutput(cmd, block+"\n")
 		},
 	}
 }
@@ -102,12 +99,10 @@ func newCrontabUninstallCommand() *cobra.Command {
 			}
 
 			if cobrahelptree.IsAgentMode() {
-				fmt.Fprintln(cmd.OutOrStdout(), "crontab: uninstalled")
-				return nil
+				return writeOutput(cmd, "crontab: uninstalled\n")
 			}
 
-			fmt.Fprintln(cmd.OutOrStdout(), "[OK] Removed cron-person managed block from system crontab")
-			return nil
+			return writeOutput(cmd, "[OK] Removed cron-person managed block from system crontab\n")
 		},
 	}
 }

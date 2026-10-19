@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
 	"github.com/spf13/cobra"
@@ -12,6 +13,11 @@ import (
 var (
 	version = "0.0.1"
 )
+
+func writeOutput(cmd *cobra.Command, s string) error {
+	_, err := fmt.Fprint(cmd.OutOrStdout(), s)
+	return err
+}
 
 func getStore(cmd *cobra.Command) (*store.Store, error) {
 	storePath, _ := cmd.Flags().GetString("store")
@@ -84,20 +90,21 @@ func newRootStatusCommand() *cobra.Command {
 				}
 			}
 
+			var out strings.Builder
 			if cobrahelptree.IsAgentMode() {
-				fmt.Fprintln(cmd.OutOrStdout(), "version: "+version)
-				fmt.Fprintf(cmd.OutOrStdout(), "tracked_dirs: %d\n", len(records))
-				fmt.Fprintf(cmd.OutOrStdout(), "allowed_dirs: %d\n", allowedCount)
-				fmt.Fprintf(cmd.OutOrStdout(), "total_tasks: %d\n", totalTasks)
-				return nil
+				fmt.Fprintln(&out, "version: "+version)
+				fmt.Fprintf(&out, "tracked_dirs: %d\n", len(records))
+				fmt.Fprintf(&out, "allowed_dirs: %d\n", allowedCount)
+				fmt.Fprintf(&out, "total_tasks: %d\n", totalTasks)
+				return writeOutput(cmd, out.String())
 			}
 
-			fmt.Fprintln(cmd.OutOrStdout(), "[OK] cron-person system status: active")
-			fmt.Fprintf(cmd.OutOrStdout(), "  Version:              %s\n", version)
-			fmt.Fprintf(cmd.OutOrStdout(), "  Tracked Directories:  %d\n", len(records))
-			fmt.Fprintf(cmd.OutOrStdout(), "  Allowed Directories:  %d\n", allowedCount)
-			fmt.Fprintf(cmd.OutOrStdout(), "  Active Tasks:         %d\n", totalTasks)
-			return nil
+			fmt.Fprintln(&out, "[OK] cron-person system status: active")
+			fmt.Fprintf(&out, "  Version:              %s\n", version)
+			fmt.Fprintf(&out, "  Tracked Directories:  %d\n", len(records))
+			fmt.Fprintf(&out, "  Allowed Directories:  %d\n", allowedCount)
+			fmt.Fprintf(&out, "  Active Tasks:         %d\n", totalTasks)
+			return writeOutput(cmd, out.String())
 		},
 	}
 }

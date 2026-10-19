@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
@@ -21,8 +20,7 @@ func newHookCommand() *cobra.Command {
 				return err
 			}
 
-			fmt.Fprint(cmd.OutOrStdout(), script)
-			return nil
+			return writeOutput(cmd, script)
 		},
 	}
 

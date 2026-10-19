@@ -76,16 +76,18 @@ func HandleHookExport(st *store.Store, dir string, isAgent bool, stderr io.Write
 	switch status {
 	case store.StatusUnauthorized:
 		if isAgent {
-			fmt.Fprintf(stderr, "WARN: unauthorized .cronrc at %s\n", foundCronrc)
-		} else {
-			fmt.Fprintf(stderr, "[WARN] cron-person: unauthorized .cronrc detected at %s (run 'cron-person allow' to approve)\n", foundCronrc)
+			_, err = fmt.Fprintf(stderr, "WARN: unauthorized .cronrc at %s\n", foundCronrc)
+			return err
 		}
+		_, err = fmt.Fprintf(stderr, "[WARN] cron-person: unauthorized .cronrc detected at %s (run 'cron-person allow' to approve)\n", foundCronrc)
+		return err
 	case store.StatusChanged:
 		if isAgent {
-			fmt.Fprintf(stderr, "WARN: modified .cronrc at %s\n", foundCronrc)
-		} else {
-			fmt.Fprintf(stderr, "[WARN] cron-person: modified .cronrc detected at %s (run 'cron-person allow' to approve changes)\n", foundCronrc)
+			_, err = fmt.Fprintf(stderr, "WARN: modified .cronrc at %s\n", foundCronrc)
+			return err
 		}
+		_, err = fmt.Fprintf(stderr, "[WARN] cron-person: modified .cronrc detected at %s (run 'cron-person allow' to approve changes)\n", foundCronrc)
+		return err
 	case store.StatusAllowed, store.StatusMissingCronrc, store.StatusOrphan:
 		// No warning needed
 	}

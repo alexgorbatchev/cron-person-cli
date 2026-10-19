@@ -67,28 +67,28 @@ func newTaskListCommand() *cobra.Command {
 				}
 			}
 
+			var out strings.Builder
 			if cobrahelptree.IsAgentMode() {
 				for _, t := range tasks {
-					fmt.Fprintf(cmd.OutOrStdout(), "dir: %s\tschedule: %s\tline: %d\tcmd: %s\n", t.Dir, t.Schedule, t.Line, t.Command)
+					fmt.Fprintf(&out, "dir: %s\tschedule: %s\tline: %d\tcmd: %s\n", t.Dir, t.Schedule, t.Line, t.Command)
 				}
-				return nil
+				return writeOutput(cmd, out.String())
 			}
 
 			if len(tasks) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), "No tasks found in authorized directories.")
-				return nil
+				return writeOutput(cmd, "No tasks found in authorized directories.\n")
 			}
 
-			fmt.Fprintf(cmd.OutOrStdout(), "Total scheduled tasks: %d\n\n", len(tasks))
+			fmt.Fprintf(&out, "Total scheduled tasks: %d\n\n", len(tasks))
 			currentDir := ""
 			for _, t := range tasks {
 				if t.Dir != currentDir {
 					currentDir = t.Dir
-					fmt.Fprintf(cmd.OutOrStdout(), "Directory: %s\n", currentDir)
+					fmt.Fprintf(&out, "Directory: %s\n", currentDir)
 				}
-				fmt.Fprintf(cmd.OutOrStdout(), "  [%s] (line %d) %s\n", t.Schedule, t.Line, t.Command)
+				fmt.Fprintf(&out, "  [%s] (line %d) %s\n", t.Schedule, t.Line, t.Command)
 			}
-			return nil
+			return writeOutput(cmd, out.String())
 		},
 	}
 }
