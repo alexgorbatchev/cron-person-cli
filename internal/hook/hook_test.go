@@ -277,6 +277,23 @@ trap
 `,
 			wantCountLine: "precmd_count=1 chpwd_count=1",
 		},
+		{
+			shell: "fish",
+			args:  []string{"--no-config", "-c"},
+			checkSnippet: `trap 'echo prior-int-handler' INT
+__HOOK_SCRIPT__
+__HOOK_SCRIPT__
+sh -c 'exit 17'
+__cron_person_export_eval
+printf 'fail_status=%d\n' $status
+true
+__cron_person_export_eval
+printf 'ok_status=%d\n' $status
+printf 'fish_fn=%d\n' (functions -q __cron_person_export_eval; echo $status)
+trap
+`,
+			wantCountLine: "fish_fn=0",
+		},
 	} {
 		t.Run(tc.shell, func(t *testing.T) {
 			shellBin, err := exec.LookPath(tc.shell)
