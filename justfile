@@ -50,3 +50,7 @@ check:
 # Clean up build binaries and temporary files
 clean:
     rm -rf bin coverage.out .tmp dist
+
+# Download project dependencies for local development
+setup:
+    go mod download
