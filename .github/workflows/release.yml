@@ -29,8 +29,11 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      - name: Test
-        run: go test ./...
+      - name: Test with race detector and coverage gate
+        run: |
+          mkdir -p .tmp
+          go test -race -v -coverprofile=.tmp/coverage.out ./...
+          coverage_profile=.tmp/coverage.out coverage_packages="$(go list ./...)" go run ./scripts/dev-bootstrap.go
 
   release:
     needs: verify
