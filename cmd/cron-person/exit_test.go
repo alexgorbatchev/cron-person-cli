@@ -47,3 +47,27 @@ func TestRunPropagatesTaskExitStatus(t *testing.T) {
 		})
 	}
 }
+
+func TestReportRunIDNeverCreatesTheFile(t *testing.T) {
+	dir := t.TempDir()
+	existing := filepath.Join(dir, "run.id")
+	if err := os.WriteFile(existing, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := reportRunID(existing, "run-1"); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := os.ReadFile(existing); err != nil || string(data) != "run-1" {
+		t.Fatalf("run ID file = %q, %v", data, err)
+	}
+	removed := filepath.Join(dir, "gone.id")
+	if err := reportRunID(removed, "run-2"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(removed); !os.IsNotExist(err) {
+		t.Fatalf("removed run ID file was recreated: %v", err)
+	}
+	if err := reportRunID(dir, "run-3"); err == nil || !strings.Contains(err.Error(), "reporting run ID") {
+		t.Fatalf("reportRunID(directory) = %v", err)
+	}
+}

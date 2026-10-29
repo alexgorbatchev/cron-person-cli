@@ -106,13 +106,28 @@ func runRecordedTask(cmd *cobra.Command, dir, command string, trigger history.Tr
 		Warnings:       warnings,
 	}
 	if runIDFile != "" {
-		opts.OnStart = func(id string) {
-			if err := os.WriteFile(runIDFile, []byte(id), 0o600); err != nil {
-				idErr = fmt.Errorf("reporting run ID: %w", err)
-			}
-		}
+		opts.OnStart = func(id string) { idErr = reportRunID(runIDFile, id) }
 	}
 	return errors.Join(runner.NewRunner(st).Exec(ctx, opts), idErr)
+}
+
+// reportRunID writes id into the file a foreground `task run` created for it.
+// The file is never created here: a foreground that already detached or exited
+// has removed it and no longer needs the ID, and recreating it would leave it
+// behind.
+func reportRunID(path, id string) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, 0)
+	if errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("reporting run ID: %w", err)
+	}
+	_, writeErr := f.WriteString(id)
+	if err := errors.Join(writeErr, f.Close()); err != nil {
+		return fmt.Errorf("reporting run ID: %w", err)
+	}
+	return nil
 }
 
 func writeWarning(cmd *cobra.Command, msg string) {
