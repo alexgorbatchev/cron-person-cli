@@ -17,14 +17,25 @@ const (
 	BlockEnd   = "# <<< cron-person managed block <<<"
 )
 
+// Invocation identifies how generated entries call cron-person. Cron does not
+// inherit the user's shell environment, so the store and configuration paths
+// are fixed at generation time.
+type Invocation struct {
+	Bin    string
+	Store  string
+	Config string
+}
+
 // GenerateBlock builds the managed crontab string from all authorized records.
-func GenerateBlock(records []store.Record, binPath, storePath string) (string, error) {
-	if strings.TrimSpace(storePath) == "" {
-		return "", fmt.Errorf("authorization store path cannot be empty")
-	}
-	storePath, err := filepath.Abs(storePath)
+func GenerateBlock(records []store.Record, inv Invocation) (string, error) {
+	binPath := inv.Bin
+	storePath, err := absRequired(inv.Store, "authorization store")
 	if err != nil {
-		return "", fmt.Errorf("resolving authorization store: %w", err)
+		return "", err
+	}
+	configPath, err := absRequired(inv.Config, "configuration file")
+	if err != nil {
+		return "", err
 	}
 	if binPath == "" {
 		executable, err := os.Executable()
@@ -34,8 +45,8 @@ func GenerateBlock(records []store.Record, binPath, storePath string) (string, e
 			binPath = executable
 		}
 	}
-	if strings.ContainsAny(binPath+storePath, "\r\n\x00") {
-		return "", fmt.Errorf("executable and store paths must not contain line breaks or NUL")
+	if strings.ContainsAny(binPath+storePath+configPath, "\r\n\x00") {
+		return "", fmt.Errorf("executable, store, and configuration paths must not contain line breaks or NUL")
 	}
 
 	var sb strings.Builder
@@ -71,13 +82,24 @@ func GenerateBlock(records []store.Record, binPath, storePath string) (string, e
 			if strings.ContainsAny(task.Schedule+task.Command, "\r\n\x00") {
 				return "", fmt.Errorf("task in %s must not contain line breaks or NUL", rec.Path)
 			}
-			sb.WriteString(fmt.Sprintf("%s %s --store %s exec %s -- %s\n", task.Schedule,
-				quoteCronArg(binPath), quoteCronArg(storePath), quoteCronArg(rec.Dir), quoteCronArg(task.Command)))
+			sb.WriteString(fmt.Sprintf("%s %s --store %s --config %s exec %s -- %s\n", task.Schedule,
+				quoteCronArg(binPath), quoteCronArg(storePath), quoteCronArg(configPath), quoteCronArg(rec.Dir), quoteCronArg(task.Command)))
 		}
 	}
 
 	sb.WriteString(BlockEnd)
 	return sb.String(), nil
+}
+
+func absRequired(path, name string) (string, error) {
+	if strings.TrimSpace(path) == "" {
+		return "", fmt.Errorf("%s path cannot be empty", name)
+	}
+	abs, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("resolving %s: %w", name, err)
+	}
+	return abs, nil
 }
 
 // Keep shell syntax inside a single argument for the authorized runner. Cron
@@ -209,7 +231,7 @@ func WriteSystemCrontab(content string) error {
 }
 
 // Preview generates the managed block and counts eligible directories without installing it.
-func Preview(st *store.Store, binPath string) (string, int, error) {
+func Preview(st *store.Store, binPath, configPath string) (string, int, error) {
 	records, err := st.List()
 	if err != nil {
 		return "", 0, err
@@ -226,7 +248,7 @@ func Preview(st *store.Store, binPath string) (string, int, error) {
 		}
 	}
 
-	managedBlock, err := GenerateBlock(validRecords, binPath, st.Path())
+	managedBlock, err := GenerateBlock(validRecords, Invocation{Bin: binPath, Store: st.Path(), Config: configPath})
 	if err != nil {
 		return "", 0, fmt.Errorf("generating managed crontab block: %w", err)
 	}
@@ -234,8 +256,8 @@ func Preview(st *store.Store, binPath string) (string, int, error) {
 }
 
 // Sync reads the store, generates the managed block, and updates the system crontab.
-func Sync(st *store.Store, binPath string) (int, error) {
-	managedBlock, count, err := Preview(st, binPath)
+func Sync(st *store.Store, binPath, configPath string) (int, error) {
+	managedBlock, count, err := Preview(st, binPath, configPath)
 	if err != nil {
 		return 0, err
 	}

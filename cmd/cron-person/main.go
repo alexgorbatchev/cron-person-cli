@@ -22,6 +22,11 @@ func run(args []string, stdout, stderr io.Writer) int {
 	cmd.SetOut(stdout)
 	cmd.SetErr(stderr)
 	if err := cmd.Execute(); err != nil {
+		var status exitStatus
+		if errors.As(err, &status) {
+			// The failure was already reported by the process that produced it.
+			return int(status)
+		}
 		if cobrahelptree.IsAgentMode() {
 			fmt.Fprintf(stderr, "ERR: %s\n", display.Error(err))
 		} else {
@@ -31,6 +36,12 @@ func run(args []string, stdout, stderr io.Writer) int {
 	}
 	return 0
 }
+
+// exitStatus ends the process with a status that a child process has already
+// explained on the relayed stderr.
+type exitStatus int
+
+func (s exitStatus) Error() string { return fmt.Sprintf("exit status %d", int(s)) }
 
 // exitCode passes a task's own exit status through to cron and callers, using
 // the shell convention of 128+N for termination by signal N. Every other

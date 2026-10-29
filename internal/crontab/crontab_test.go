@@ -47,14 +47,19 @@ func TestQuoteCronArgRoundTrip(t *testing.T) {
 	}
 }
 
+// testConfig is the configuration path embedded in generated test entries.
+const testConfig = "/etc/cron-person-test/config.json"
+
 func TestGenerateBlockRejectsInvalidPaths(t *testing.T) {
-	for _, tt := range []struct{ name, bin, state, dir string }{
-		{"executable", "bad\nbin", "state", "dir"},
-		{"state", "bin", "bad\rstate", "dir"},
-		{"directory", "bin", "state", "bad\ndir"},
+	for _, tt := range []struct{ name, bin, state, config, dir string }{
+		{"executable", "bad\nbin", "state", testConfig, "dir"},
+		{"state", "bin", "bad\rstate", testConfig, "dir"},
+		{"config", "bin", "state", "bad\nconfig", "dir"},
+		{"empty config", "bin", "state", " ", "dir"},
+		{"directory", "bin", "state", testConfig, "bad\ndir"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			block, err := GenerateBlock([]store.Record{{Dir: tt.dir}}, tt.bin, tt.state)
+			block, err := GenerateBlock([]store.Record{{Dir: tt.dir}}, Invocation{Bin: tt.bin, Store: tt.state, Config: tt.config})
 			if err == nil || block != "" {
 				t.Fatalf("unsafe block=%q err=%v", block, err)
 			}
@@ -185,15 +190,15 @@ func TestGenerateBlock(t *testing.T) {
 	}
 
 	state := filepath.Join(tempDir, "state.json")
-	block, err := GenerateBlock(records, "/usr/local/bin/cron-person", state)
+	block, err := GenerateBlock(records, Invocation{Bin: "/usr/local/bin/cron-person", Store: state, Config: testConfig})
 	if err != nil {
 		t.Fatalf("unexpected GenerateBlock error: %v", err)
 	}
 
-	if !strings.Contains(block, "0 * * * * '/usr/local/bin/cron-person' --store '"+state+"' exec '"+appDir+"' -- './task.sh'") {
+	if !strings.Contains(block, "0 * * * * '/usr/local/bin/cron-person' --store '"+state+"' --config '"+testConfig+"' exec '"+appDir+"' -- './task.sh'") {
 		t.Errorf("expected task 1 in block, got: %s", block)
 	}
-	if !strings.Contains(block, "@daily '/usr/local/bin/cron-person' --store '"+state+"' exec '"+appDir+"' -- 'make sync'") {
+	if !strings.Contains(block, "@daily '/usr/local/bin/cron-person' --store '"+state+"' --config '"+testConfig+"' exec '"+appDir+"' -- 'make sync'") {
 		t.Errorf("expected task 2 in block, got: %s", block)
 	}
 }
@@ -209,7 +214,7 @@ func TestHelperCronPersonRunner(t *testing.T) {
 			break
 		}
 	}
-	if len(args) != 6 || args[0] != "--store" || args[2] != "exec" || args[4] != "--" {
+	if len(args) != 8 || args[0] != "--store" || args[2] != "--config" || args[4] != "exec" || args[6] != "--" {
 		os.Exit(2)
 	}
 	st, err := store.NewStore(args[1])
@@ -217,8 +222,8 @@ func TestHelperCronPersonRunner(t *testing.T) {
 		os.Exit(3)
 	}
 	err = runner.NewRunner(st).Exec(context.Background(), runner.ExecOptions{
-		Dir:     args[3],
-		Command: args[5],
+		Dir:     args[5],
+		Command: args[7],
 		Stdout:  os.Stdout,
 		Stderr:  os.Stderr,
 	})
@@ -325,7 +330,7 @@ func TestGenerateBlock_ExecutesSafelyAndBlocksUnauthorized(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	block, err := GenerateBlock([]store.Record{*rec}, wrapperPath, statePath)
+	block, err := GenerateBlock([]store.Record{*rec}, Invocation{Bin: wrapperPath, Store: statePath, Config: testConfig})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -434,20 +439,20 @@ func TestGenerateBlock_RejectsInvalidControlCharacters(t *testing.T) {
 	}
 	validRecord := store.Record{Dir: dir, Path: validCronrc}
 
-	if _, err := GenerateBlock([]store.Record{validRecord}, "/bin/cron-person\ninjected", state); err == nil {
+	if _, err := GenerateBlock([]store.Record{validRecord}, Invocation{Bin: "/bin/cron-person\ninjected", Store: state, Config: testConfig}); err == nil {
 		t.Fatal("expected error for newline in binPath")
 	}
-	if _, err := GenerateBlock([]store.Record{validRecord}, "/bin/cron-person", ""); err == nil {
+	if _, err := GenerateBlock([]store.Record{validRecord}, Invocation{Bin: "/bin/cron-person", Store: "", Config: testConfig}); err == nil {
 		t.Fatal("expected error for empty storePath")
 	}
-	if _, err := GenerateBlock([]store.Record{{Dir: "", Path: validCronrc}}, "/bin/cron-person", state); err == nil {
+	if _, err := GenerateBlock([]store.Record{{Dir: "", Path: validCronrc}}, Invocation{Bin: "/bin/cron-person", Store: state, Config: testConfig}); err == nil {
 		t.Fatal("expected error for empty record Dir")
 	}
-	if _, err := GenerateBlock([]store.Record{{Dir: dir + "\ninjected", Path: validCronrc}}, "/bin/cron-person", state); err == nil {
+	if _, err := GenerateBlock([]store.Record{{Dir: dir + "\ninjected", Path: validCronrc}}, Invocation{Bin: "/bin/cron-person", Store: state, Config: testConfig}); err == nil {
 		t.Fatal("expected error for newline in record Dir")
 	}
 
-	if _, err := GenerateBlock([]store.Record{{Dir: dir + "\rinjected", Path: validCronrc}}, "/bin/cron-person", state); err == nil {
+	if _, err := GenerateBlock([]store.Record{{Dir: dir + "\rinjected", Path: validCronrc}}, Invocation{Bin: "/bin/cron-person", Store: state, Config: testConfig}); err == nil {
 		t.Fatal("expected error for carriage return in record Dir")
 	}
 
@@ -455,7 +460,7 @@ func TestGenerateBlock_RejectsInvalidControlCharacters(t *testing.T) {
 	if err := os.WriteFile(nulCronrc, []byte("@hourly echo ok\x00malicious\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := GenerateBlock([]store.Record{{Dir: dir, Path: nulCronrc}}, "/bin/cron-person", state); err == nil {
+	if _, err := GenerateBlock([]store.Record{{Dir: dir, Path: nulCronrc}}, Invocation{Bin: "/bin/cron-person", Store: state, Config: testConfig}); err == nil {
 		t.Fatal("expected error for NUL byte in command")
 	}
 }
@@ -488,7 +493,7 @@ func TestGenerateBlock_RejectsModifiedSnapshotAfterStatusCheck(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	block, err := GenerateBlock([]store.Record{*checkedRec}, "/bin/cron-person", state)
+	block, err := GenerateBlock([]store.Record{*checkedRec}, Invocation{Bin: "/bin/cron-person", Store: state, Config: testConfig})
 	if err != nil {
 		t.Fatal(err)
 	}

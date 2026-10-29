@@ -115,7 +115,7 @@ func TestSyncAndUninstall(t *testing.T) {
 	writeCrontabFile(t, path, userJobs+"\n"+BlockStart+"\n@daily stale-job\n"+BlockEnd+"\n")
 	var first string
 	for i := range 2 {
-		count, err := Sync(st, "/opt/cron-person")
+		count, err := Sync(st, "/opt/cron-person", testConfig)
 		if err != nil || count != 1 {
 			t.Fatalf("synced directories=%d error=%v", count, err)
 		}
@@ -160,7 +160,7 @@ func TestSyncAndUninstallFailures(t *testing.T) {
 					t.Setenv("TEST_CRONTAB_WRITE_ERROR", "write refused")
 				}
 				if operation == "sync" {
-					_, err = Sync(st, "cron-person")
+					_, err = Sync(st, "cron-person", testConfig)
 				} else {
 					err = Uninstall()
 				}
@@ -189,7 +189,7 @@ func TestGenerateBlockSkipsUnusableFiles(t *testing.T) {
 	}
 	records = append(records, store.Record{Dir: dir, Path: filepath.Join(dir, "missing")})
 	state := filepath.Join(dir, "state.json")
-	block, err := GenerateBlock(records, "", state)
+	block, err := GenerateBlock(records, Invocation{Bin: "", Store: state, Config: testConfig})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +197,7 @@ func TestGenerateBlockSkipsUnusableFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(block, "@hourly '"+exe+"' --store '"+state+"' exec '"+dir+"' -- 'run-active'") || strings.Count(block, "# Directory:") != 1 {
+	if !strings.Contains(block, "@hourly '"+exe+"' --store '"+state+"' --config '"+testConfig+"' exec '"+dir+"' -- 'run-active'") || strings.Count(block, "# Directory:") != 1 {
 		t.Fatalf("unexpected generated block: %s", block)
 	}
 }
@@ -214,7 +214,7 @@ func TestGenerateBlockReportsConfigFailures(t *testing.T) {
 			} else {
 				writeCrontabFile(t, path, "invalid schedule\n")
 			}
-			block, err := GenerateBlock([]store.Record{{Dir: dir, Path: path}}, "/opt/cron-person", filepath.Join(dir, "state.json"))
+			block, err := GenerateBlock([]store.Record{{Dir: dir, Path: path}}, Invocation{Bin: "/opt/cron-person", Store: filepath.Join(dir, "state.json"), Config: testConfig})
 			if err == nil || !strings.Contains(err.Error(), failure+" "+path) || block != "" {
 				t.Fatalf("block=%q error=%v", block, err)
 			}
@@ -264,7 +264,7 @@ func TestSyncAndUninstallPreserveMarkerSubstringsAndRejectMalformed(t *testing.T
 		t.Fatalf("Uninstall modified unmanaged marker substrings: got=%q want=%q err=%v", data, userJobs, err)
 	}
 
-	if count, err := Sync(st, "/opt/cron-person"); err != nil || count != 1 {
+	if count, err := Sync(st, "/opt/cron-person", testConfig); err != nil || count != 1 {
 		t.Fatalf("Sync count=%d err=%v", count, err)
 	}
 	syncedData, err := os.ReadFile(path)
@@ -289,7 +289,7 @@ func TestSyncAndUninstallPreserveMarkerSubstringsAndRejectMalformed(t *testing.T
 		BlockStart + "\n@hourly one\n" + BlockEnd + "\n@daily middle\n" + BlockStart + "\n@hourly two\n" + BlockEnd + "\n",
 	} {
 		writeCrontabFile(t, path, malformed)
-		if _, err := Sync(st, "/opt/cron-person"); err == nil {
+		if _, err := Sync(st, "/opt/cron-person", testConfig); err == nil {
 			t.Fatalf("expected Sync to reject malformed crontab %q", malformed)
 		}
 		if data, err := os.ReadFile(path); err != nil || string(data) != malformed {

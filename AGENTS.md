@@ -27,7 +27,8 @@ Higher-order per-directory crontab manager with direnv-style shell integration
 - **Help Screens & Terminal Width:** CLI help output (`--help`) must display an aligned hierarchical tree view with `├─` and `╰─` glyphs powered by `github.com/alexgorbatchev/cobra-help-tree/v2` (`cobrahelptree.Setup(rootCmd)`), with command descriptions automatically trimmed to the terminal width using ellipsis (`...`).
 - **Agent Mode (`AGENT=1`):** When `AGENT=1` is set, output compact key-value pairs or bullets.
 - **Hermetic Unit Tests:** All unit tests must remain 100% offline and hermetic.
-- **Generated Commands:** Keep the entire task command inside one shell argument, escape cron percent signs, and pass the absolute authorization store path explicitly. Test generated entries through the outer shell as in `cmd/cron-person/generated_test.go`.
+- **Run History:** Record every `exec` and `task run` invocation through `runner.ExecOptions.History`, including refused runs. Task execution must never depend on history, configuration, or pruning succeeding: report those failures after the task finishes. Determine run liveness with the run's OS-held lock (`internal/filelock`), never by probing PIDs. A foreground `task run` delegates recording to a `cron-person exec` child in its own session (`attach.go`), so capture survives detaching; tests re-execute the test binary as the CLI through `TestMain` (`CRON_PERSON_TEST_AS_CLI`).
+- **Generated Commands:** Keep the entire task command inside one shell argument, escape cron percent signs, and pass the absolute authorization store and configuration paths explicitly. Test generated entries through the outer shell as in `cmd/cron-person/generated_test.go`.
 
 ## Boundaries
 - **Always:** Maintain >= 90% statement code coverage across Go packages.

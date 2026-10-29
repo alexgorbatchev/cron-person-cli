@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
 	"github.com/spf13/cobra"
 )
@@ -88,7 +90,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 	},
 	"cron-person task": {
 		Summary:     "Inspect and trigger scheduled tasks",
-		Description: "Commands for listing and manually triggering individual tasks.",
+		Description: "Commands for listing, manually triggering, and reviewing the run history of individual tasks.",
 	},
 	"cron-person task list": {
 		Summary:     "List all tasks defined across all authorized directories",
@@ -100,6 +102,20 @@ var techCatalog = cobrahelptree.TechCatalog{
 		Args: []cobrahelptree.ArgSpec{
 			{Name: "<dir>", Description: "Directory path containing .cronrc"},
 			{Name: "<command...>", Description: "Shell command string to execute"},
+		},
+	},
+	"cron-person task history": {
+		Summary:     "List recent task runs, newest first",
+		Description: "Lists recorded runs from cron and manual triggers, including refused runs, from <store dir>/runs. Filter by directory or task ID; --limit 0 lists all.",
+		Args: []cobrahelptree.ArgSpec{
+			{Name: "[dir]", Description: "Show only runs of tasks in this directory (defaults to all directories)"},
+		},
+	},
+	"cron-person task log": {
+		Summary:     "Show the details and captured output of a task run",
+		Description: "Prints run metadata followed by the captured output, with each line prefixed [out] or [err] by stream.",
+		Args: []cobrahelptree.ArgSpec{
+			{Name: "<run-id>", Description: "Run ID shown by task history"},
 		},
 	},
 	"cron-person exec": {
@@ -120,10 +136,14 @@ var techCatalog = cobrahelptree.TechCatalog{
 }
 
 func setupHelp(cmd *cobra.Command) {
-	_ = cobrahelptree.SetupWithOptions(cmd, cobrahelptree.HelpOptions{
+	err := cobrahelptree.SetupWithOptions(cmd, cobrahelptree.HelpOptions{
 		Catalog: techCatalog,
 		Tree: cobrahelptree.TreeOptions{
 			HideGeneratedCommands: true,
 		},
 	})
+	if err != nil {
+		// The options are static, so a failure is a programming error.
+		panic(fmt.Sprintf("configuring help: %v", err))
+	}
 }

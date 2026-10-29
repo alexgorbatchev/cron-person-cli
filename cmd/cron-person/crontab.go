@@ -5,6 +5,7 @@ import (
 	"os"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
+	"github.com/alexgorbatchev/cron-person-cli/internal/config"
 	"github.com/alexgorbatchev/cron-person-cli/internal/crontab"
 	"github.com/spf13/cobra"
 )
@@ -38,7 +39,17 @@ func newCrontabSyncCommand() *cobra.Command {
 				exePath = "cron-person"
 			}
 
-			count, err := crontab.Sync(st, exePath)
+			configPath, err := getConfigPath(cmd)
+			if err != nil {
+				return err
+			}
+			// Scheduled runs fall back to defaults quietly, so a broken configuration
+			// is caught here, when schedules are installed.
+			if _, err := config.Load(configPath); err != nil {
+				return fmt.Errorf("fix the configuration before syncing: %w", err)
+			}
+
+			count, err := crontab.Sync(st, exePath, configPath)
 			if err != nil {
 				return fmt.Errorf("syncing crontab: %w", err)
 			}
@@ -68,7 +79,12 @@ func newCrontabShowCommand() *cobra.Command {
 				exePath = "cron-person"
 			}
 
-			block, _, err := crontab.Preview(st, exePath)
+			configPath, err := getConfigPath(cmd)
+			if err != nil {
+				return err
+			}
+
+			block, _, err := crontab.Preview(st, exePath, configPath)
 			if err != nil {
 				return err
 			}

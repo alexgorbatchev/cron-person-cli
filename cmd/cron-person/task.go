@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -10,7 +9,6 @@ import (
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
 	"github.com/alexgorbatchev/cron-person-cli/internal/display"
-	"github.com/alexgorbatchev/cron-person-cli/internal/runner"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -23,6 +21,8 @@ func newTaskCommand() *cobra.Command {
 
 	cmd.AddCommand(newTaskListCommand())
 	cmd.AddCommand(newTaskRunCommand())
+	cmd.AddCommand(newTaskHistoryCommand())
+	cmd.AddCommand(newTaskLogCommand())
 
 	return cmd
 }
@@ -118,28 +118,7 @@ func newTaskRunCommand() *cobra.Command {
 		Short: "Manually execute a task inside a target directory with its .cronrc environment",
 		Args:  cobra.MinimumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			st, err := getStore(cmd)
-			if err != nil {
-				return err
-			}
-
-			dir, err := filepath.Abs(args[0])
-			if err != nil {
-				return fmt.Errorf("resolving directory %s: %w", args[0], err)
-			}
-
-			command := strings.Join(args[1:], " ")
-			r := runner.NewRunner(st)
-
-			opts := runner.ExecOptions{
-				Dir:     dir,
-				Command: command,
-				Stdout:  cmd.OutOrStdout(),
-				Stderr:  cmd.ErrOrStderr(),
-				Stdin:   cmd.InOrStdin(),
-			}
-
-			return r.Exec(context.Background(), opts)
+			return runAttached(cmd, args[0], strings.Join(args[1:], " "))
 		},
 	}
 }

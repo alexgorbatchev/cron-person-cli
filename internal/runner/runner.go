@@ -3,13 +3,19 @@ package runner
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
+	"sync"
+	"sync/atomic"
+	"time"
 
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
+	"github.com/alexgorbatchev/cron-person-cli/internal/history"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 )
 
@@ -21,7 +27,25 @@ type ExecOptions struct {
 	Stderr   io.Writer
 	Stdin    io.Reader
 	ExtraEnv map[string]string
+	// History records the run, including refusals, when set. Retention is
+	// enforced after each recorded run.
+	History   *history.Log
+	Trigger   history.Trigger
+	Retention history.Retention
+	// MaxOutputBytes caps each run's stored output; zero stores everything.
+	MaxOutputBytes int64
+	// Warnings are recorded with the run.
+	Warnings []string
+	// OnStart receives the run ID once recording has started.
+	OnStart func(runID string)
+	// Grace bounds two waits: how long a cancelled task may take to exit after
+	// SIGTERM before its process group is killed, and how long output is still
+	// captured after the task exits while a background process it started keeps
+	// the output streams open. Zero selects defaultGrace.
+	Grace time.Duration
 }
+
+const defaultGrace = 10 * time.Second
 
 // Runner executes tasks within the context of an authorized directory and its .cronrc.
 type Runner struct {
@@ -37,38 +61,153 @@ func NewRunner(st *store.Store) *Runner {
 
 // Exec verifies directory authorization, sets working directory to the .cronrc location,
 // loads .cronrc environment variables, and executes the specified shell command.
+// History failures never prevent the task from running; they are joined into the
+// returned error after the task completes.
 func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 	absDir, err := filepath.Abs(opts.Dir)
 	if err != nil {
 		return fmt.Errorf("resolving target directory %q: %w", opts.Dir, err)
 	}
 
+	var rec *history.Recording
+	var historyErr error
+	if opts.History != nil {
+		start := history.StartOptions{Dir: absDir, Command: opts.Command, Trigger: opts.Trigger, MaxOutputBytes: opts.MaxOutputBytes, Warnings: opts.Warnings}
+		if rec, err = opts.History.Start(start); err != nil {
+			historyErr = fmt.Errorf("recording run: %w", err)
+		} else if opts.OnStart != nil {
+			opts.OnStart(rec.ID())
+		}
+	}
+
+	cmd, err := r.prepare(ctx, absDir, opts)
+	if err != nil {
+		if rec != nil {
+			historyErr = rec.Reject(err)
+		}
+		return errors.Join(err, historyErr, prune(opts))
+	}
+
+	cmd.Stdout = defaultWriter(opts.Stdout, os.Stdout)
+	cmd.Stderr = defaultWriter(opts.Stderr, os.Stderr)
+	if rec != nil {
+		// Distinct tee writers defeat os/exec's single-writer guarantee for a
+		// shared stdout/stderr writer, so caller writes share one lock. Caller
+		// streams are best effort: once one fails, such as a detached `task run`
+		// closing its end, output keeps flowing into the recording, which never
+		// fails, and the task is never blocked or broken by it.
+		mu := &sync.Mutex{}
+		cmd.Stdout = io.MultiWriter(rec.Stdout(), &passthroughWriter{mu: mu, w: cmd.Stdout})
+		cmd.Stderr = io.MultiWriter(rec.Stderr(), &passthroughWriter{mu: mu, w: cmd.Stderr})
+	}
+	cmd.Stdin = opts.Stdin
+	if cmd.Stdin == nil {
+		cmd.Stdin = os.Stdin
+	}
+
+	grace := opts.Grace
+	if grace <= 0 {
+		grace = defaultGrace
+	}
+	runErr := runGroup(cmd, grace)
+	if errors.Is(runErr, exec.ErrWaitDelay) {
+		if rec != nil {
+			rec.Warn(fmt.Sprintf("output stayed open %s after the task exited, so capture stopped; redirect the output of background processes", grace))
+		}
+		runErr = nil
+	}
+	if runErr != nil {
+		runErr = fmt.Errorf("task failed in %s: %w", absDir, runErr)
+	}
+	if rec != nil {
+		historyErr = rec.Finish(runErr)
+	}
+	return errors.Join(runErr, historyErr, prune(opts))
+}
+
+// runGroup runs cmd as the leader of its own process group, so cancellation
+// reaches every process the task started: SIGTERM first, then SIGKILL for the
+// group once grace passes.
+func runGroup(cmd *exec.Cmd, grace time.Duration) error {
+	setProcessGroup(cmd)
+	var escalation atomic.Pointer[time.Timer]
+	cmd.Cancel = func() error {
+		escalation.Store(time.AfterFunc(grace, func() { _ = killGroup(cmd.Process) }))
+		return terminateGroup(cmd.Process)
+	}
+	cmd.WaitDelay = grace
+	err := cmd.Run()
+	if t := escalation.Load(); t != nil {
+		t.Stop()
+	}
+	return err
+}
+
+func prune(opts ExecOptions) error {
+	if opts.History == nil {
+		return nil
+	}
+	if err := opts.History.Prune(opts.Retention, time.Now()); err != nil {
+		return fmt.Errorf("pruning run history: %w", err)
+	}
+	return nil
+}
+
+// passthroughWriter forwards to a caller stream until its first failure and
+// then discards, always reporting success so the tee keeps recording.
+type passthroughWriter struct {
+	mu     *sync.Mutex
+	w      io.Writer
+	broken bool
+}
+
+func (w *passthroughWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if !w.broken {
+		if _, err := w.w.Write(p); err != nil {
+			w.broken = true
+		}
+	}
+	return len(p), nil
+}
+
+func defaultWriter(w, fallback io.Writer) io.Writer {
+	if w != nil {
+		return w
+	}
+	return fallback
+}
+
+// prepare validates authorization and builds the command from the validated
+// .cronrc snapshot.
+func (r *Runner) prepare(ctx context.Context, absDir string, opts ExecOptions) (*exec.Cmd, error) {
 	// 1. Verify authorization status and read the validated snapshot
 	dirStatus, _, snapshot, err := r.store.Inspect(absDir)
 	if err != nil {
-		return fmt.Errorf("checking authorization for %s: %w", absDir, err)
+		return nil, fmt.Errorf("checking authorization for %s: %w", absDir, err)
 	}
 
 	switch dirStatus {
 	case store.StatusAllowed:
 		// Authorization valid
 	case store.StatusUnauthorized:
-		return fmt.Errorf("directory %s is unauthorized: run 'cron-person allow %s' to authorize", absDir, absDir)
+		return nil, fmt.Errorf("directory %s is unauthorized: run 'cron-person allow %s' to authorize", absDir, absDir)
 	case store.StatusChanged:
-		return fmt.Errorf("directory %s has changed .cronrc (hash mismatch / blocked): run 'cron-person allow %s' to approve changes", absDir, absDir)
+		return nil, fmt.Errorf("directory %s has changed .cronrc (hash mismatch / blocked): run 'cron-person allow %s' to approve changes", absDir, absDir)
 	case store.StatusMissingCronrc:
-		return fmt.Errorf("no .cronrc file found in %s", absDir)
+		return nil, fmt.Errorf("no .cronrc file found in %s", absDir)
 	case store.StatusOrphan:
-		return fmt.Errorf("directory %s or its .cronrc does not exist on disk", absDir)
+		return nil, fmt.Errorf("directory %s or its .cronrc does not exist on disk", absDir)
 	default:
-		return fmt.Errorf("directory %s has invalid status: %s", absDir, dirStatus)
+		return nil, fmt.Errorf("directory %s has invalid status: %s", absDir, dirStatus)
 	}
 
 	// 2. Parse the validated .cronrc snapshot to obtain directory-specific environment variables
 	cronrcPath := filepath.Join(absDir, ".cronrc")
 	parsed, err := cronrc.Parse(bytes.NewReader(snapshot), cronrcPath)
 	if err != nil {
-		return fmt.Errorf("parsing %s: %w", cronrcPath, err)
+		return nil, fmt.Errorf("parsing %s: %w", cronrcPath, err)
 	}
 
 	// 3. Prepare command execution environment
@@ -86,11 +225,8 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 	// Build environment: current process env + .cronrc env + extra env
 	envMap := make(map[string]string)
 	for _, kv := range os.Environ() {
-		for i := 0; i < len(kv); i++ {
-			if kv[i] == '=' {
-				envMap[kv[:i]] = kv[i+1:]
-				break
-			}
+		if k, v, ok := strings.Cut(kv, "="); ok {
+			envMap[k] = v
 		}
 	}
 	for k, v := range parsed.Env {
@@ -110,25 +246,5 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 	}
 	cmd.Env = envList
 
-	// Attach IO streams
-	if opts.Stdout != nil {
-		cmd.Stdout = opts.Stdout
-	} else {
-		cmd.Stdout = os.Stdout
-	}
-	if opts.Stderr != nil {
-		cmd.Stderr = opts.Stderr
-	} else {
-		cmd.Stderr = os.Stderr
-	}
-	if opts.Stdin != nil {
-		cmd.Stdin = opts.Stdin
-	} else {
-		cmd.Stdin = os.Stdin
-	}
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("task failed in %s: %w", absDir, err)
-	}
-	return nil
+	return cmd, nil
 }

@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
+	"github.com/alexgorbatchev/cron-person-cli/internal/config"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
+	"github.com/alexgorbatchev/cron-person-cli/internal/display"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -33,6 +36,37 @@ func getStore(cmd *cobra.Command) (*store.Store, error) {
 	return store.NewStore(storePath)
 }
 
+func getConfigPath(cmd *cobra.Command) (string, error) {
+	configPath, _ := cmd.Flags().GetString("config")
+	if configPath == "" {
+		var err error
+		if configPath, err = config.DefaultPath(); err != nil {
+			return "", fmt.Errorf("resolving config path: %w", err)
+		}
+	}
+	return filepath.Abs(configPath)
+}
+
+func loadConfig(cmd *cobra.Command) (config.Config, error) {
+	path, err := getConfigPath(cmd)
+	if err != nil {
+		return config.Config{}, err
+	}
+	return config.Load(path)
+}
+
+// describeConfig reports whether the configuration file is absent (defaults),
+// loaded, or invalid, with the reason when it is invalid.
+func describeConfig(path string) (string, error) {
+	if _, err := config.Load(path); err != nil {
+		return "invalid", err
+	}
+	if _, err := os.Stat(path); err == nil {
+		return "loaded", nil
+	}
+	return "defaults", nil
+}
+
 func newRootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:           "cron-person",
@@ -47,6 +81,7 @@ func newRootCommand() *cobra.Command {
 	}
 
 	rootCmd.PersistentFlags().String("store", "", "Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)")
+	rootCmd.PersistentFlags().String("config", "", "Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)")
 
 	// Subcommands
 	rootCmd.AddCommand(newDirCommand())
@@ -102,20 +137,39 @@ func newRootStatusCommand() *cobra.Command {
 				}
 			}
 
+			configPath, err := getConfigPath(cmd)
+			if err != nil {
+				return err
+			}
+			configState, configErr := describeConfig(configPath)
+
 			var out strings.Builder
 			if cobrahelptree.IsAgentMode() {
 				fmt.Fprintln(&out, "version: "+version)
 				fmt.Fprintf(&out, "tracked_dirs: %d\n", len(records))
 				fmt.Fprintf(&out, "allowed_dirs: %d\n", allowedCount)
 				fmt.Fprintf(&out, "total_tasks: %d\n", totalTasks)
+				fmt.Fprintf(&out, "config: %s\n", display.Path(configPath))
+				fmt.Fprintf(&out, "config_status: %s\n", configState)
+				if configErr != nil {
+					fmt.Fprintf(&out, "config_error: %s\n", display.Error(configErr))
+				}
 				return writeOutput(cmd, out.String())
 			}
 
-			fmt.Fprintln(&out, "[OK] cron-person system status: active")
+			if configErr != nil {
+				fmt.Fprintln(&out, "[WARN] cron-person system status: configuration invalid, defaults in use")
+			} else {
+				fmt.Fprintln(&out, "[OK] cron-person system status: active")
+			}
 			fmt.Fprintf(&out, "  Version:              %s\n", version)
 			fmt.Fprintf(&out, "  Tracked Directories:  %d\n", len(records))
 			fmt.Fprintf(&out, "  Allowed Directories:  %d\n", allowedCount)
 			fmt.Fprintf(&out, "  Active Tasks:         %d\n", totalTasks)
+			fmt.Fprintf(&out, "  Configuration:        %s (%s)\n", display.Path(configPath), configState)
+			if configErr != nil {
+				fmt.Fprintf(&out, "  Configuration Error:  %s\n", display.Error(configErr))
+			}
 			return writeOutput(cmd, out.String())
 		},
 	}
