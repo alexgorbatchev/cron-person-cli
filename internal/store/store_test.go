@@ -125,8 +125,8 @@ func TestStore_PersistenceAndPrune(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(st2.List()) != 2 {
-		t.Fatalf("expected 2 records, got %d", len(st2.List()))
+	if len(mustList(t, st2)) != 2 {
+		t.Fatalf("expected 2 records, got %d", len(mustList(t, st2)))
 	}
 
 	// Delete proj2
@@ -139,7 +139,7 @@ func TestStore_PersistenceAndPrune(t *testing.T) {
 	if len(pruned) != 1 || pruned[0] != proj2 {
 		t.Fatalf("expected pruned [proj2], got %v", pruned)
 	}
-	if len(st2.List()) != 1 {
-		t.Fatalf("expected 1 record after prune, got %d", len(st2.List()))
+	if len(mustList(t, st2)) != 1 {
+		t.Fatalf("expected 1 record after prune, got %d", len(mustList(t, st2)))
 	}
 }

@@ -46,10 +46,20 @@ func GenerateBlock(records []store.Record, binPath, storePath string) (string, e
 		if strings.TrimSpace(rec.Dir) == "" || strings.ContainsAny(rec.Dir, "\r\n\x00") {
 			return "", fmt.Errorf("directory path must not be empty or contain line breaks or NUL")
 		}
-		parsed, err := cronrc.ParseFile(rec.Path)
-		if err != nil || (rec.Hash != "" && parsed.Hash != rec.Hash) {
-			// Skip files that fail parsing, are missing, or no longer match their approved hash
+		data, err := os.ReadFile(rec.Path)
+		if os.IsNotExist(err) {
+			// A removed configuration is no longer eligible for scheduling.
 			continue
+		}
+		if err != nil {
+			return "", fmt.Errorf("reading %s: %w", rec.Path, err)
+		}
+		if rec.Hash != "" && cronrc.ComputeHash(data) != rec.Hash {
+			continue
+		}
+		parsed, err := cronrc.Parse(bytes.NewReader(data), rec.Path)
+		if err != nil {
+			return "", fmt.Errorf("parsing %s: %w", rec.Path, err)
 		}
 
 		if len(parsed.Tasks) == 0 {
@@ -198,23 +208,37 @@ func WriteSystemCrontab(content string) error {
 	return nil
 }
 
-// Sync reads the store, generates the managed block, and updates the system crontab.
-func Sync(st *store.Store, binPath string) (int, error) {
-	records := st.List()
+// Preview generates the managed block and counts eligible directories without installing it.
+func Preview(st *store.Store, binPath string) (string, int, error) {
+	records, err := st.List()
+	if err != nil {
+		return "", 0, err
+	}
 	validRecords := make([]store.Record, 0, len(records))
 
 	for _, rec := range records {
 		status, _, err := st.Status(rec.Dir)
-		if err == nil && status == store.StatusAllowed {
+		if err != nil {
+			return "", 0, fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
+		}
+		if status == store.StatusAllowed {
 			validRecords = append(validRecords, rec)
 		}
 	}
 
 	managedBlock, err := GenerateBlock(validRecords, binPath, st.Path())
 	if err != nil {
-		return 0, fmt.Errorf("generating managed crontab block: %w", err)
+		return "", 0, fmt.Errorf("generating managed crontab block: %w", err)
 	}
+	return managedBlock, len(validRecords), nil
+}
 
+// Sync reads the store, generates the managed block, and updates the system crontab.
+func Sync(st *store.Store, binPath string) (int, error) {
+	managedBlock, count, err := Preview(st, binPath)
+	if err != nil {
+		return 0, err
+	}
 	existing, err := ReadSystemCrontab()
 	if err != nil {
 		return 0, err
@@ -228,7 +252,7 @@ func Sync(st *store.Store, binPath string) (int, error) {
 		return 0, err
 	}
 
-	return len(validRecords), nil
+	return count, nil
 }
 
 // Uninstall removes the managed block from the system crontab.

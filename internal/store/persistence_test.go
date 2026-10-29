@@ -79,26 +79,26 @@ func TestStoreCopiesAndSortedPersistence(t *testing.T) {
 	}
 	want = []string{filepath.Join(dir, "a"), filepath.Join(dir, "z")}
 	t.Chdir(dir)
-	rec, ok := st.Get("a")
-	if !ok || rec.Dir != want[0] || rec.Hash == "" || rec.AllowedAt.IsZero() {
+	rec, ok, err := st.Get("a")
+	if err != nil || !ok || rec.Dir != want[0] || rec.Hash == "" || rec.AllowedAt.IsZero() {
 		t.Fatalf("invalid retrieved record: %+v, found=%v", rec, ok)
 	}
 	rec.Hash = "changed copy"
-	list := st.List()
+	list := mustList(t, st)
 	list[0].Hash = "changed list"
 	reloaded, err := NewStore(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, current := range []*Store{st, reloaded} {
-		records := current.List()
+		records := mustList(t, current)
 		if got := []string{records[0].Dir, records[1].Dir}; !reflect.DeepEqual(got, want) {
 			t.Fatalf("order=%v, want %v", got, want)
 		}
-		if got, ok := current.Get("a"); !ok || got.Hash == rec.Hash || got.Hash == list[0].Hash {
+		if got, ok, err := current.Get("a"); err != nil || !ok || got.Hash == rec.Hash || got.Hash == list[0].Hash {
 			t.Fatalf("record was modified through returned copy: %+v", got)
 		}
-		if got, ok := current.Get("missing"); ok || got != nil {
+		if got, ok, err := current.Get("missing"); err != nil || ok || got != nil {
 			t.Fatalf("unexpected missing record: %+v, %v", got, ok)
 		}
 	}
@@ -231,7 +231,7 @@ func TestStoreUnavailableWorkingDirectory(t *testing.T) {
 	if _, _, err := st.Status("relative"); err == nil {
 		t.Fatal("status succeeded without a working directory")
 	}
-	if rec, ok := st.Get("relative"); ok || rec != nil {
+	if rec, ok, err := st.Get("relative"); err == nil || ok || rec != nil {
 		t.Fatalf("unexpected record: %+v, %v", rec, ok)
 	}
 }
@@ -426,7 +426,7 @@ func TestStoreFailedPersistencePreservesMemoryConsistency(t *testing.T) {
 	if status, _, err := st.Status(project); err != nil || status != StatusUnauthorized {
 		t.Fatalf("failed Allow left status=%s err=%v, want %s", status, err, StatusUnauthorized)
 	}
-	if rec, ok := st.Get(project); ok || rec != nil {
+	if rec, ok, err := st.Get(project); err != nil || ok || rec != nil {
 		t.Fatalf("failed Allow left record in memory: %+v", rec)
 	}
 
@@ -459,7 +459,7 @@ func TestStoreFailedPersistencePreservesMemoryConsistency(t *testing.T) {
 	if _, err := st.Prune(); err == nil {
 		t.Fatal("expected Prune to fail when store path is a directory")
 	}
-	if _, ok := st.Get(project); !ok {
+	if _, ok, err := st.Get(project); err != nil || !ok {
 		t.Fatal("failed Prune removed record from in-memory store")
 	}
 }

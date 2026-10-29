@@ -30,16 +30,14 @@ func TestHookScriptBinaryAndShellSelection(t *testing.T) {
 	}
 }
 
-func TestHookExportAgentAndAbsentCronrc(t *testing.T) {
+func TestHookExportAgent(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()
 	st, err := store.NewStore(filepath.Join(dir, "state.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	var output bytes.Buffer
-	if err := HandleHookExport(st, dir, true, &output); err != nil || output.Len() != 0 {
-		t.Fatalf("absent cronrc output=%q error=%v", output.String(), err)
-	}
 	path := filepath.Join(dir, ".cronrc")
 	if err := os.WriteFile(path, []byte("@daily true\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -49,6 +47,10 @@ func TestHookExportAgentAndAbsentCronrc(t *testing.T) {
 	}
 	if _, err := st.Allow(dir); err != nil {
 		t.Fatal(err)
+	}
+	output.Reset()
+	if err := HandleHookExport(st, dir, true, &output); err != nil || output.Len() != 0 {
+		t.Fatalf("authorized cronrc output=%q error=%v", output.String(), err)
 	}
 	if err := os.WriteFile(path, []byte("@hourly true\n"), 0o600); err != nil {
 		t.Fatal(err)

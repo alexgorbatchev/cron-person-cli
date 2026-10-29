@@ -100,6 +100,7 @@ func TestHelperHookExport(t *testing.T) {
 }
 
 func TestGeneratedHookScriptsDeliverWarnings(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	for _, shell := range []string{"bash", "zsh", "fish"} {
 		script, err := GenerateHookScript(shell, "cron-person")
 		if err != nil {

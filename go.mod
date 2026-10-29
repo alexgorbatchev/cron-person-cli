@@ -4,6 +4,7 @@ go 1.26.2
 
 require (
 	github.com/alexgorbatchev/cobra-help-tree/v2 v2.0.1
+	github.com/lnquy/cron v1.1.1
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.10.2
 )

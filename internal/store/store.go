@@ -231,30 +231,34 @@ func (s *Store) Deny(dir string) error {
 }
 
 // Get returns the stored record for dir.
-func (s *Store) Get(dir string) (*Record, bool) {
+func (s *Store) Get(dir string) (*Record, bool, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	_ = s.reloadLocked()
+	if err := s.reloadLocked(); err != nil {
+		return nil, false, err
+	}
 
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
-		absDir = dir
+		return nil, false, fmt.Errorf("resolving directory path: %w", err)
 	}
 
 	rec, ok := s.records[absDir]
 	if !ok {
-		return nil, false
+		return nil, false, nil
 	}
-	return &rec, true
+	return &rec, true, nil
 }
 
 // List returns a sorted copy of all stored records.
-func (s *Store) List() []Record {
+func (s *Store) List() ([]Record, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	_ = s.reloadLocked()
+	if err := s.reloadLocked(); err != nil {
+		return nil, err
+	}
 
 	list := make([]Record, 0, len(s.records))
 	for _, rec := range s.records {
@@ -264,7 +268,7 @@ func (s *Store) List() []Record {
 	sort.Slice(list, func(i, j int) bool {
 		return list[i].Dir < list[j].Dir
 	})
-	return list
+	return list, nil
 }
 
 // Status inspects disk and compares with store to determine the directory's status.
@@ -284,7 +288,10 @@ func (s *Store) Inspect(dir string) (DirStatus, *Record, []byte, error) {
 	fileInfo, statErr := os.Stat(cronrcPath)
 
 	s.mu.Lock()
-	_ = s.reloadLocked()
+	if err := s.reloadLocked(); err != nil {
+		s.mu.Unlock()
+		return "", nil, nil, err
+	}
 	rec, hasRecord := s.records[absDir]
 	s.mu.Unlock()
 

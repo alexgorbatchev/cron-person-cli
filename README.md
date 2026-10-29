@@ -126,8 +126,23 @@ cron-person hook fish | source
 
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
-| `list` | | List all scheduled tasks across all authorized directories |
+| `list` | | List tasks across authorized directories with readable schedules, original expressions, commands, and `.cronrc` file paths and line numbers |
 | `run` | `<dir> <command...>` | Manually run task command inside directory context |
+
+`cron-person task list` groups tasks by directory. Each task includes its source as `path/to/.cronrc:line`, where the line number counts every line in the file, including comments and blank lines. Schedule descriptions use English and 24-hour time; the original cron expression is retained beside each description. This lists authorized configuration rather than confirming what is installed in the system crontab. Store, authorization inspection, and parsing errors fail the command without printing a partial task list.
+
+```text
+Total scheduled tasks: 1
+
+Directory: ~/projects/example
+  Every 30 minutes [*/30 * * * *]
+    Source: ~/projects/example/.cronrc:2
+    Command: ./sync.sh
+```
+
+With `AGENT=1`, each task is one tab-separated line containing `dir`, `file`, `line`, `schedule`, `description`, and `cmd` fields.
+
+Descriptive output, warnings, and errors display paths under your home directory as `~`. Generated crontab entries, shell integration scripts, task commands, and subprocess output retain their original paths.
 
 ### `cron-person exec`
 

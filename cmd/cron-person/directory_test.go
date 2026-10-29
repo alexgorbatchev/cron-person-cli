@@ -43,6 +43,7 @@ func modeText(mode, human, agent string) string {
 }
 
 func TestDirectoryLifecycleBothModes(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
 	for _, mode := range []string{"0", "1"} {
 		t.Run("agent="+mode, func(t *testing.T) {
 			t.Setenv("AGENT", mode)
@@ -88,8 +89,8 @@ func TestDirectoryWithoutCronrcAndDefaultStore(t *testing.T) {
 			dir := t.TempDir()
 			t.Setenv("XDG_STATE_HOME", filepath.Join(dir, "state"))
 			t.Chdir(dir)
-			requireCLIOutput(t, []string{"dir", "status"}, modeText(mode, "Status:    missing_cronrc", "status: missing_cronrc"))
-			requireCLIOutput(t, []string{"deny"}, modeText(mode, "Revoked authorization", "status: denied"))
+			requireCLIOutput(t, []string{"dir", "status", dir}, modeText(mode, "Status:    missing_cronrc", "status: missing_cronrc"))
+			requireCLIOutput(t, []string{"deny", dir}, modeText(mode, "Revoked authorization", "status: denied"))
 			writeCLIFile(t, filepath.Join(dir, ".cronrc"), "@hourly true\n")
 			requireCLIOutput(t, []string{"allow"}, modeText(mode, "Authorized", "status: allowed"))
 			if _, err := os.Stat(filepath.Join(dir, "state", "cron-person", "allowed.json")); err != nil {

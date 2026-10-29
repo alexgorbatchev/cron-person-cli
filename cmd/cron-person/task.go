@@ -1,16 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
-	"github.com/spf13/cobra"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
+	"github.com/alexgorbatchev/cron-person-cli/internal/display"
 	"github.com/alexgorbatchev/cron-person-cli/internal/runner"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
+	"github.com/spf13/cobra"
 )
 
 func newTaskCommand() *cobra.Command {
@@ -36,33 +38,48 @@ func newTaskListCommand() *cobra.Command {
 				return err
 			}
 
-			records := st.List()
+			records, err := st.List()
+			if err != nil {
+				return err
+			}
 
 			type taskItem struct {
-				Dir      string
-				Schedule string
-				Command  string
-				Line     int
+				Dir         string
+				Path        string
+				Schedule    string
+				Description string
+				Command     string
+				Line        int
 			}
 
 			var tasks []taskItem
 			for _, rec := range records {
-				status, _, err := st.Status(rec.Dir)
-				if err != nil || status != store.StatusAllowed {
+				status, _, snapshot, err := st.Inspect(rec.Dir)
+				if err != nil {
+					return fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
+				}
+				if status != store.StatusAllowed {
 					continue
 				}
 
-				parsed, err := cronrc.ParseFile(rec.Path)
+				path := filepath.Join(rec.Dir, ".cronrc")
+				parsed, err := cronrc.Parse(bytes.NewReader(snapshot), path)
 				if err != nil {
-					continue
+					return fmt.Errorf("parsing %s: %w", path, err)
 				}
 
 				for _, t := range parsed.Tasks {
+					description, err := cronrc.DescribeSchedule(t.Schedule)
+					if err != nil {
+						return fmt.Errorf("describing schedule at %s:%d: %w", parsed.Path, t.LineNumber, err)
+					}
 					tasks = append(tasks, taskItem{
-						Dir:      rec.Dir,
-						Schedule: t.Schedule,
-						Command:  t.Command,
-						Line:     t.LineNumber,
+						Dir:         rec.Dir,
+						Path:        parsed.Path,
+						Schedule:    t.Schedule,
+						Description: description,
+						Command:     t.Command,
+						Line:        t.LineNumber,
 					})
 				}
 			}
@@ -70,7 +87,7 @@ func newTaskListCommand() *cobra.Command {
 			var out strings.Builder
 			if cobrahelptree.IsAgentMode() {
 				for _, t := range tasks {
-					fmt.Fprintf(&out, "dir: %s\tschedule: %s\tline: %d\tcmd: %s\n", t.Dir, t.Schedule, t.Line, t.Command)
+					fmt.Fprintf(&out, "dir: %s\tfile: %s\tline: %d\tschedule: %s\tdescription: %s\tcmd: %s\n", display.Path(t.Dir), display.Path(t.Path), t.Line, t.Schedule, t.Description, t.Command)
 				}
 				return writeOutput(cmd, out.String())
 			}
@@ -84,9 +101,11 @@ func newTaskListCommand() *cobra.Command {
 			for _, t := range tasks {
 				if t.Dir != currentDir {
 					currentDir = t.Dir
-					fmt.Fprintf(&out, "Directory: %s\n", currentDir)
+					fmt.Fprintf(&out, "Directory: %s\n", display.Path(currentDir))
 				}
-				fmt.Fprintf(&out, "  [%s] (line %d) %s\n", t.Schedule, t.Line, t.Command)
+				fmt.Fprintf(&out, "  %s [%s]\n", t.Description, t.Schedule)
+				fmt.Fprintf(&out, "    Source: %s:%d\n", display.Path(t.Path), t.Line)
+				fmt.Fprintf(&out, "    Command: %s\n", t.Command)
 			}
 			return writeOutput(cmd, out.String())
 		},

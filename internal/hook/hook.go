@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
+	"github.com/alexgorbatchev/cron-person-cli/internal/display"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 )
 
@@ -72,6 +73,7 @@ func HandleHookExport(st *store.Store, dir string, isAgent bool, stderr io.Write
 	if err != nil {
 		return err
 	}
+	foundCronrc = display.Path(foundCronrc)
 
 	switch status {
 	case store.StatusUnauthorized:

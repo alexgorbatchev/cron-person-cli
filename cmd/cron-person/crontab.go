@@ -6,7 +6,6 @@ import (
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
 	"github.com/alexgorbatchev/cron-person-cli/internal/crontab"
-	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -69,16 +68,7 @@ func newCrontabShowCommand() *cobra.Command {
 				exePath = "cron-person"
 			}
 
-			records := st.List()
-			validRecords := make([]store.Record, 0, len(records))
-			for _, rec := range records {
-				status, _, err := st.Status(rec.Dir)
-				if err == nil && status == store.StatusAllowed {
-					validRecords = append(validRecords, rec)
-				}
-			}
-
-			block, err := crontab.GenerateBlock(validRecords, exePath, st.Path())
+			block, _, err := crontab.Preview(st, exePath)
 			if err != nil {
 				return err
 			}

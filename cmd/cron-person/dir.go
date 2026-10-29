@@ -7,9 +7,10 @@ import (
 	"strings"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
-	"github.com/spf13/cobra"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
+	"github.com/alexgorbatchev/cron-person-cli/internal/display"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
+	"github.com/spf13/cobra"
 )
 
 func resolveTargetDir(args []string) (string, error) {
@@ -65,10 +66,10 @@ func newDirAllowCommand() *cobra.Command {
 			}
 
 			if cobrahelptree.IsAgentMode() {
-				return writeOutput(cmd, fmt.Sprintf("dir: %s\nstatus: allowed\nhash: %s\n", rec.Dir, rec.Hash))
+				return writeOutput(cmd, fmt.Sprintf("dir: %s\nstatus: allowed\nhash: %s\n", display.Path(rec.Dir), rec.Hash))
 			}
 
-			return writeOutput(cmd, fmt.Sprintf("[OK] Authorized .cronrc in %s\n     Hash: %s\n", rec.Dir, rec.Hash))
+			return writeOutput(cmd, fmt.Sprintf("[OK] Authorized .cronrc in %s\n     Hash: %s\n", display.Path(rec.Dir), rec.Hash))
 		},
 	}
 }
@@ -94,10 +95,10 @@ func newDirDenyCommand() *cobra.Command {
 			}
 
 			if cobrahelptree.IsAgentMode() {
-				return writeOutput(cmd, fmt.Sprintf("dir: %s\nstatus: denied\n", dir))
+				return writeOutput(cmd, fmt.Sprintf("dir: %s\nstatus: denied\n", display.Path(dir)))
 			}
 
-			return writeOutput(cmd, fmt.Sprintf("[OK] Revoked authorization for %s\n", dir))
+			return writeOutput(cmd, fmt.Sprintf("[OK] Revoked authorization for %s\n", display.Path(dir)))
 		},
 	}
 }
@@ -113,13 +114,19 @@ func newDirListCommand() *cobra.Command {
 				return err
 			}
 
-			records := st.List()
+			records, err := st.List()
+			if err != nil {
+				return err
+			}
 
 			var out strings.Builder
 			if cobrahelptree.IsAgentMode() {
 				for _, rec := range records {
-					status, _, _ := st.Status(rec.Dir)
-					fmt.Fprintf(&out, "dir: %s\tstatus: %s\thash: %s\n", rec.Dir, status, rec.Hash)
+					status, _, err := st.Status(rec.Dir)
+					if err != nil {
+						return fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
+					}
+					fmt.Fprintf(&out, "dir: %s\tstatus: %s\thash: %s\n", display.Path(rec.Dir), status, rec.Hash)
 				}
 				return writeOutput(cmd, out.String())
 			}
@@ -130,12 +137,15 @@ func newDirListCommand() *cobra.Command {
 
 			fmt.Fprintln(&out, "Tracked Directories:")
 			for _, rec := range records {
-				status, _, _ := st.Status(rec.Dir)
+				status, _, err := st.Status(rec.Dir)
+				if err != nil {
+					return fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
+				}
 				statusTag := "[OK]"
 				if status != store.StatusAllowed {
 					statusTag = "[WARN]"
 				}
-				fmt.Fprintf(&out, "  %s %s (%s)\n", statusTag, rec.Dir, status)
+				fmt.Fprintf(&out, "  %s %s (%s)\n", statusTag, display.Path(rec.Dir), status)
 				fmt.Fprintf(&out, "     Hash: %s\n", rec.Hash)
 			}
 			return writeOutput(cmd, out.String())
@@ -161,11 +171,11 @@ func newDirCheckCommand() *cobra.Command {
 			}
 
 			if cobrahelptree.IsAgentMode() {
-				return writeOutput(cmd, fmt.Sprintf("path: %s\ntasks_count: %d\nhash: %s\n", parsed.Path, len(parsed.Tasks), parsed.Hash))
+				return writeOutput(cmd, fmt.Sprintf("path: %s\ntasks_count: %d\nhash: %s\n", display.Path(parsed.Path), len(parsed.Tasks), parsed.Hash))
 			}
 
 			var out strings.Builder
-			fmt.Fprintf(&out, "[OK] Syntax valid for %s\n", parsed.Path)
+			fmt.Fprintf(&out, "[OK] Syntax valid for %s\n", display.Path(parsed.Path))
 			fmt.Fprintf(&out, "     Found %d scheduled task(s)\n", len(parsed.Tasks))
 			if len(parsed.Env) > 0 {
 				fmt.Fprintf(&out, "     Environment variables: %d defined\n", len(parsed.Env))
@@ -198,25 +208,32 @@ func newDirStatusCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			var parsed *cronrc.File
+			if status != store.StatusMissingCronrc && status != store.StatusOrphan {
+				path := filepath.Join(dir, ".cronrc")
+				parsed, err = cronrc.ParseFile(path)
+				if err != nil {
+					return fmt.Errorf("parsing %s: %w", path, err)
+				}
+			}
 
 			var out strings.Builder
 			if cobrahelptree.IsAgentMode() {
-				fmt.Fprintf(&out, "dir: %s\nstatus: %s\n", dir, status)
+				fmt.Fprintf(&out, "dir: %s\nstatus: %s\n", display.Path(dir), status)
 				if rec != nil {
 					fmt.Fprintf(&out, "hash: %s\n", rec.Hash)
 				}
 				return writeOutput(cmd, out.String())
 			}
 
-			fmt.Fprintf(&out, "Directory: %s\n", dir)
+			fmt.Fprintf(&out, "Directory: %s\n", display.Path(dir))
 			fmt.Fprintf(&out, "Status:    %s\n", status)
 			if rec != nil {
 				fmt.Fprintf(&out, "Hash:      %s\n", rec.Hash)
 				fmt.Fprintf(&out, "Allowed:   %s\n", rec.AllowedAt.Format("2006-01-02 15:04:05 UTC"))
 			}
 
-			cronrcPath := filepath.Join(dir, ".cronrc")
-			if parsed, err := cronrc.ParseFile(cronrcPath); err == nil {
+			if parsed != nil {
 				fmt.Fprintf(&out, "\nTasks (%d):\n", len(parsed.Tasks))
 				for i, t := range parsed.Tasks {
 					fmt.Fprintf(&out, "  %d. [%s] %s\n", i+1, t.Schedule, t.Command)

@@ -180,7 +180,6 @@ func TestGenerateBlockSkipsUnusableFiles(t *testing.T) {
 	dir := t.TempDir()
 	records := make([]store.Record, 0, 4)
 	for _, tt := range []struct{ name, content string }{
-		{"invalid", "invalid schedule\n"},
 		{"empty", "ENV=only\n"},
 		{"valid", "@hourly run-active\n"},
 	} {
@@ -200,6 +199,26 @@ func TestGenerateBlockSkipsUnusableFiles(t *testing.T) {
 	}
 	if !strings.Contains(block, "@hourly '"+exe+"' --store '"+state+"' exec '"+dir+"' -- 'run-active'") || strings.Count(block, "# Directory:") != 1 {
 		t.Fatalf("unexpected generated block: %s", block)
+	}
+}
+
+func TestGenerateBlockReportsConfigFailures(t *testing.T) {
+	for _, failure := range []string{"reading", "parsing"} {
+		t.Run(failure, func(t *testing.T) {
+			dir := t.TempDir()
+			path := filepath.Join(dir, ".cronrc")
+			if failure == "reading" {
+				if err := os.Symlink(".cronrc", path); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				writeCrontabFile(t, path, "invalid schedule\n")
+			}
+			block, err := GenerateBlock([]store.Record{{Dir: dir, Path: path}}, "/opt/cron-person", filepath.Join(dir, "state.json"))
+			if err == nil || !strings.Contains(err.Error(), failure+" "+path) || block != "" {
+				t.Fatalf("block=%q error=%v", block, err)
+			}
+		})
 	}
 }
 

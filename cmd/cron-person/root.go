@@ -1,13 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
-	"github.com/spf13/cobra"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -33,11 +35,12 @@ func getStore(cmd *cobra.Command) (*store.Store, error) {
 
 func newRootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
-		Use:          "cron-person",
-		Short:        "Higher-order per-directory crontab manager with direnv-style shell integration",
-		Long:         "cron-person is a higher-order crontab manager that executes cron tasks in their respective directory contexts with direnv-style allow/deny authorization.",
-		Version:      version,
-		SilenceUsage: true,
+		Use:           "cron-person",
+		Short:         "Higher-order per-directory crontab manager with direnv-style shell integration",
+		Long:          "cron-person is a higher-order crontab manager that executes cron tasks in their respective directory contexts with direnv-style allow/deny authorization.",
+		Version:       version,
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return cmd.Help()
 		},
@@ -76,17 +79,26 @@ func newRootStatusCommand() *cobra.Command {
 				return err
 			}
 
-			records := st.List()
+			records, err := st.List()
+			if err != nil {
+				return err
+			}
 			allowedCount := 0
 			totalTasks := 0
 
 			for _, rec := range records {
-				status, _, err := st.Status(rec.Dir)
-				if err == nil && status == store.StatusAllowed {
+				status, _, snapshot, err := st.Inspect(rec.Dir)
+				if err != nil {
+					return fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
+				}
+				if status == store.StatusAllowed {
 					allowedCount++
-					if parsed, err := cronrc.ParseFile(rec.Path); err == nil {
-						totalTasks += len(parsed.Tasks)
+					path := filepath.Join(rec.Dir, ".cronrc")
+					parsed, err := cronrc.Parse(bytes.NewReader(snapshot), path)
+					if err != nil {
+						return fmt.Errorf("parsing %s: %w", path, err)
 					}
+					totalTasks += len(parsed.Tasks)
 				}
 			}
 

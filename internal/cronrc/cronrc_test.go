@@ -197,22 +197,17 @@ func TestFindCronrc(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// No .cronrc yet
-	found, err := FindCronrc(subDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if found != "" {
-		t.Fatalf("expected empty, got %q", found)
-	}
-
 	// Create .cronrc in a/
 	cronrcPath := filepath.Join(tempDir, "a", ".cronrc")
 	if err := os.WriteFile(cronrcPath, []byte("@daily echo hi\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	found, err = FindCronrc(subDir)
+	// A directory named .cronrc must not hide the nearest configuration file.
+	if err := os.Mkdir(filepath.Join(subDir, ".cronrc"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	found, err := FindCronrc(subDir)
 	if err != nil {
 		t.Fatal(err)
 	}
