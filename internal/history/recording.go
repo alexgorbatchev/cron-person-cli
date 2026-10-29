@@ -53,9 +53,10 @@ type StartOptions struct {
 	Warnings       []string
 }
 
-// Start records a new running task and opens its output log. The run is
-// assembled in a hidden staging directory and renamed into place already
-// locked, so readers and pruning never observe a partial or unlocked run.
+// Start records a new running task and opens its output log. The run's lock
+// is taken before anything else is written, and the metadata last, so a run
+// is never visible to readers without its lock held; see Prune for the instant
+// before the lock exists.
 func (l *Log) Start(opts StartOptions) (*Recording, error) {
 	now := time.Now().UTC()
 	id, err := newRunID(now)
@@ -81,40 +82,30 @@ func (l *Log) Start(opts StartOptions) (*Recording, error) {
 	if err := writeJSON(filepath.Join(taskDir, taskFile), taskInfo{Dir: dir, Command: command}); err != nil {
 		return nil, err
 	}
-	staging, err := os.MkdirTemp(taskDir, "."+id+"-")
-	if err != nil {
-		return nil, fmt.Errorf("creating run directory: %w", err)
-	}
-
 	rec := &Recording{run: run, dir: filepath.Join(taskDir, id), maxOutput: opts.MaxOutputBytes}
 	rec.stdout = &streamWriter{rec: rec, prefix: stdoutPrefix}
 	rec.stderr = &streamWriter{rec: rec, prefix: stderrPrefix}
-	if err := rec.stage(staging); err != nil {
-		rec.closeFiles()
-		_ = os.RemoveAll(staging)
-		return nil, err
+	if err := os.Mkdir(rec.dir, dirPerm); err != nil {
+		return nil, fmt.Errorf("creating run directory: %w", err)
+	}
+	if err := rec.open(); err != nil {
+		return nil, errors.Join(err, rec.closeFiles(), os.RemoveAll(rec.dir))
 	}
 	return rec, nil
 }
 
-func (r *Recording) stage(staging string) error {
+func (r *Recording) open() error {
 	var err error
-	if r.lock, err = os.OpenFile(filepath.Join(staging, lockFile), os.O_CREATE|os.O_EXCL|os.O_RDWR, outputPerm); err != nil {
+	if r.lock, err = os.OpenFile(filepath.Join(r.dir, lockFile), os.O_CREATE|os.O_EXCL|os.O_RDWR, outputPerm); err != nil {
 		return fmt.Errorf("creating run lock: %w", err)
 	}
 	if err := filelock.TryLock(r.lock); err != nil {
 		return fmt.Errorf("locking run: %w", err)
 	}
-	if r.output, err = os.OpenFile(filepath.Join(staging, outputFile), os.O_CREATE|os.O_EXCL|os.O_WRONLY, outputPerm); err != nil {
+	if r.output, err = os.OpenFile(filepath.Join(r.dir, outputFile), os.O_CREATE|os.O_EXCL|os.O_WRONLY, outputPerm); err != nil {
 		return fmt.Errorf("creating run output: %w", err)
 	}
-	if err := writeJSON(filepath.Join(staging, metaFile), r.run); err != nil {
-		return err
-	}
-	if err := os.Rename(staging, r.dir); err != nil {
-		return fmt.Errorf("publishing run directory: %w", err)
-	}
-	return nil
+	return writeJSON(filepath.Join(r.dir, metaFile), r.run)
 }
 
 // closeFiles releases the output and the lock, which must come last so the

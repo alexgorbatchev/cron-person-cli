@@ -2,8 +2,9 @@
 //
 // Runs are stored as <root>/<task-id>/<run-id>/ directories holding meta.json,
 // output.log, and run.lock. Each task directory also holds task.json
-// identifying the directory and command the task ID was derived from. Hidden
-// entries are runs still being created and are ignored by readers.
+// identifying the directory and command the task ID was derived from. A run
+// directory without meta.json is still being created, or was abandoned while
+// being created, and readers skip it.
 package history
 
 import (
@@ -56,7 +57,9 @@ const (
 	lockFile    = "run.lock"
 	dirPerm     = 0o700
 	runIDLayout = "20060102T150405.000000Z"
-	taskIDBytes = 6
+	// creationGrace protects a run whose directory exists before its lock does.
+	creationGrace = time.Minute
+	taskIDBytes   = 6
 )
 
 // ErrNotFound is returned when a run ID does not exist in the log.
@@ -131,8 +134,7 @@ type runRef struct {
 }
 
 // scan returns references to every published run in task directories accepted
-// by keep, oldest first. Entries not named like run IDs, including hidden
-// staging directories, are ignored. Run IDs start with a fixed-width UTC timestamp, so name
+// by keep, oldest first. Entries not named like run IDs are ignored. Run IDs start with a fixed-width UTC timestamp, so name
 // order is time order.
 func (l *Log) scan(keep func(taskID string) (bool, error)) ([]runRef, error) {
 	taskDirs, err := os.ReadDir(l.root)
@@ -145,7 +147,7 @@ func (l *Log) scan(keep func(taskID string) (bool, error)) ([]runRef, error) {
 
 	var refs []runRef
 	for _, td := range taskDirs {
-		if !td.IsDir() || hidden(td.Name()) {
+		if !td.IsDir() {
 			continue
 		}
 		if keep != nil {
@@ -211,7 +213,7 @@ func (l *Log) List(f Filter) ([]Run, error) {
 
 // Get returns the run with the given ID.
 func (l *Log) Get(id string) (Run, error) {
-	if id == "" || hidden(id) || filepath.Base(id) != id {
+	if _, ok := runStarted(id); !ok || filepath.Base(id) != id {
 		return Run{}, fmt.Errorf("%w: %s", ErrNotFound, id)
 	}
 	taskDirs, err := os.ReadDir(l.root)
@@ -219,7 +221,7 @@ func (l *Log) Get(id string) (Run, error) {
 		return Run{}, fmt.Errorf("reading history: %w", err)
 	}
 	for _, td := range taskDirs {
-		if !td.IsDir() || hidden(td.Name()) {
+		if !td.IsDir() {
 			continue
 		}
 		ref := runRef{taskID: td.Name(), runID: id}
@@ -278,7 +280,7 @@ func (l *Log) Prune(r Retention, now time.Time) error {
 		if err != nil {
 			return err
 		}
-		if !live {
+		if !live && !l.creating(ref, now) {
 			candidates = append(candidates, pruneCandidate{ref: ref, size: size})
 		}
 	}
@@ -308,6 +310,17 @@ func (l *Log) Prune(r Retention, now time.Time) error {
 	return errors.Join(errs...)
 }
 
+// creating reports whether ref is a run whose recorder may still be between
+// creating its directory and taking its lock. Such a run has no metadata yet;
+// one that still has none after creationGrace was abandoned.
+func (l *Log) creating(ref runRef, now time.Time) bool {
+	if _, err := os.Stat(filepath.Join(l.runDir(ref), metaFile)); err == nil {
+		return false
+	}
+	started, _ := runStarted(ref.runID)
+	return now.Sub(started) < creationGrace
+}
+
 func dirSize(dir string) (int64, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
@@ -335,10 +348,6 @@ func runStarted(id string) (time.Time, bool) {
 	}
 	t, err := time.Parse(runIDLayout, prefix)
 	return t, err == nil
-}
-
-func hidden(name string) bool {
-	return strings.HasPrefix(name, ".")
 }
 
 // WriteOutput copies a run's captured output to w. A positive tail limits the
@@ -504,7 +513,7 @@ func writeJSON(path string, v any) error {
 		_ = os.Remove(tmp.Name())
 		return fmt.Errorf("writing %s: %w", path, err)
 	}
-	if err := os.Rename(tmp.Name(), path); err != nil {
+	if err := replaceFile(tmp.Name(), path); err != nil {
 		_ = os.Remove(tmp.Name())
 		return fmt.Errorf("committing %s: %w", path, err)
 	}

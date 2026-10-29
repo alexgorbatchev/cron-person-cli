@@ -362,31 +362,44 @@ func TestLiveRecorderReadsAsRunning(t *testing.T) {
 	}
 }
 
-func TestReadersIgnoreStagingDirectories(t *testing.T) {
+func TestReadersAndPruningHandleIncompleteRuns(t *testing.T) {
 	l := New(t.TempDir())
-	rec := startRun(t, l, "/srv/a", "one")
-	if err := rec.Finish(nil); err != nil {
+	rec := finishedRun(t, l, "/srv/a", "one", "")
+	taskDir := filepath.Join(l.root, rec.run.TaskID)
+	now := time.Now().UTC()
+	// Run directories without metadata, as a recorder leaves one in the instant
+	// before it takes the lock or after crashing there. Both predate the finished
+	// run, so only the creation grace can protect them.
+	young, err := newRunID(rec.run.StartedAt.Add(-time.Second))
+	if err != nil {
 		t.Fatal(err)
 	}
-	staging := filepath.Join(l.root, rec.run.TaskID, ".staging-run")
-	if err := os.MkdirAll(staging, 0o700); err != nil {
+	abandoned, err := newRunID(rec.run.StartedAt.Add(-2 * creationGrace))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(l.root, ".hidden-task", "run"), 0o700); err != nil {
-		t.Fatal(err)
+	for _, id := range []string{young, abandoned, "notes"} {
+		if err := os.MkdirAll(filepath.Join(taskDir, id), 0o700); err != nil {
+			t.Fatal(err)
+		}
 	}
 	runs, err := l.List(Filter{})
 	if err != nil || len(runs) != 1 || runs[0].ID != rec.ID() {
 		t.Fatalf("List = %v, %v", runs, err)
 	}
-	if _, err := l.Get(".staging-run"); !errors.Is(err, ErrNotFound) {
-		t.Fatalf("Get(staging) = %v", err)
+	for _, id := range []string{young, "notes"} {
+		if _, err := l.Get(id); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("Get(%s) = %v", id, err)
+		}
 	}
-	if err := l.Prune(Retention{MaxBytes: 1}, time.Now()); err != nil {
+	if err := l.Prune(Retention{MaxBytes: 1}, now); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(staging); err != nil {
-		t.Fatalf("prune touched a staging directory: %v", err)
+	for id, wantKept := range map[string]bool{young: true, abandoned: false, "notes": true, rec.ID(): true} {
+		_, err := os.Stat(filepath.Join(taskDir, id))
+		if kept := err == nil; kept != wantKept {
+			t.Fatalf("%s kept = %v, want %v", id, kept, wantKept)
+		}
 	}
 }
 
