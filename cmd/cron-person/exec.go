@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/spf13/cobra"
 	"github.com/alexgorbatchev/cron-person-cli/internal/runner"
+	"github.com/spf13/cobra"
 )
 
 func newExecCommand() *cobra.Command {

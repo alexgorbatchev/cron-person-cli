@@ -4,8 +4,8 @@ import (
 	"os"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
-	"github.com/spf13/cobra"
 	"github.com/alexgorbatchev/cron-person-cli/internal/hook"
+	"github.com/spf13/cobra"
 )
 
 func newHookCommand() *cobra.Command {
