@@ -125,22 +125,35 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 	return errors.Join(runErr, historyErr, prune(opts))
 }
 
-// runGroup runs cmd as the leader of its own process group, so cancellation
-// reaches every process the task started: SIGTERM first, then SIGKILL for the
-// group once grace passes.
+// runGroup runs cmd so that cancellation reaches every process the task
+// started: a graceful stop first (SIGTERM, or Ctrl+Break on Windows), then a
+// forced kill of the whole group once grace passes.
 func runGroup(cmd *exec.Cmd, grace time.Duration) error {
-	setProcessGroup(cmd)
+	prepareGroup(cmd)
+	var group atomic.Pointer[taskGroup]
 	var escalation atomic.Pointer[time.Timer]
 	cmd.Cancel = func() error {
-		escalation.Store(time.AfterFunc(grace, func() { _ = killGroup(cmd.Process) }))
-		return terminateGroup(cmd.Process)
+		g := group.Load()
+		if g == nil {
+			return cmd.Process.Kill()
+		}
+		escalation.Store(time.AfterFunc(grace, func() { _ = g.kill() }))
+		return g.terminate()
 	}
 	cmd.WaitDelay = grace
-	err := cmd.Run()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	g, err := attachGroup(cmd)
+	if err != nil {
+		return errors.Join(fmt.Errorf("tracking task processes: %w", err), cmd.Process.Kill(), cmd.Wait())
+	}
+	group.Store(g)
+	err = cmd.Wait()
 	if t := escalation.Load(); t != nil {
 		t.Stop()
 	}
-	return err
+	return errors.Join(err, g.close())
 }
 
 func prune(opts ExecOptions) error {

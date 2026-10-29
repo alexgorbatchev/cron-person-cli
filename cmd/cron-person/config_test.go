@@ -11,7 +11,7 @@ import (
 
 func configProject(t *testing.T) (state, project string) {
 	t.Helper()
-	t.Setenv("SHELL", "/bin/sh")
+	t.Setenv("SHELL", testShell(t))
 	tmp := t.TempDir()
 	state = filepath.Join(tmp, "state", "allowed.json")
 	project = filepath.Join(tmp, "project")

@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-10-29 12:18
+  last_modified: 2026-10-29 12:51
   status: current
 ---
 
@@ -139,7 +139,7 @@ The run is recorded by a separate background process, so it can outlive the term
 - When stdin is a terminal, Ctrl+C asks `Also terminate the task? [y/N]`. `y`, or a second Ctrl+C, terminates the task and exits with its status. Any other answer detaches: the command exits `0` and prints the run ID (agent output on stderr: `detached: true`, `run_id`), while the task keeps running and its output keeps being recorded. A detached task reads end-of-input on stdin; follow it with `task log --follow <run-id>`.
 - When stdin is not a terminal, Ctrl+C, SIGTERM, and SIGHUP terminate the task without asking.
 
-Terminating sends SIGTERM to the task's whole process group and SIGKILL 10 seconds later if anything is still running.
+Terminating sends SIGTERM to the task's whole process group and SIGKILL 10 seconds later if anything is still running. On Windows the task runs in a job object: terminating sends Ctrl+Break to the task and ends the whole job 10 seconds later.
 
 ### `cron-person task history [dir]`
 
