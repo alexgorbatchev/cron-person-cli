@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/alexgorbatchev/cron-person-cli/internal/filelock"
 )
 
 func writeStoreFile(t *testing.T, path, content string) {
@@ -314,7 +316,7 @@ func TestStoreOverlappingWritersPreserveRevocationsAndApprovals(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = lockF.Close() }()
-	if err := lockFile(lockF); err != nil {
+	if err := filelock.Lock(lockF); err != nil {
 		t.Fatal(err)
 	}
 
@@ -330,7 +332,7 @@ func TestStoreOverlappingWritersPreserveRevocationsAndApprovals(t *testing.T) {
 	default:
 	}
 
-	if err := unlockFile(lockF); err != nil {
+	if err := filelock.Unlock(lockF); err != nil {
 		t.Fatal(err)
 	}
 	if err := <-done; err != nil {

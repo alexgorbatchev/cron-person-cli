@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
+	"github.com/alexgorbatchev/cron-person-cli/internal/filelock"
 )
 
 // DirStatus represents the authorization status of a directory.
@@ -100,12 +101,12 @@ func (s *Store) withFileLock(fn func() error) error {
 	if err != nil {
 		return fmt.Errorf("locking store file: %w", err)
 	}
-	if err := lockFile(lockF); err != nil {
+	if err := filelock.Lock(lockF); err != nil {
 		_ = lockF.Close()
 		return fmt.Errorf("locking store file: %w", err)
 	}
 	defer func() {
-		_ = unlockFile(lockF)
+		_ = filelock.Unlock(lockF)
 		_ = lockF.Close()
 	}()
 
