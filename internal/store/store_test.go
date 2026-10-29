@@ -143,3 +143,44 @@ func TestStore_PersistenceAndPrune(t *testing.T) {
 		t.Fatalf("expected 1 record after prune, got %d", len(mustList(t, st2)))
 	}
 }
+
+func TestInspectReturnsTheSnapshotItHashed(t *testing.T) {
+	dir := t.TempDir()
+	st, err := NewStore(filepath.Join(dir, "state", "allowed.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cronrcPath := filepath.Join(dir, ".cronrc")
+	write := func(content string) {
+		t.Helper()
+		if err := os.WriteFile(cronrcPath, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, step := range []struct {
+		content string
+		allow   bool
+		want    DirStatus
+	}{
+		{"@hourly ./a.sh\n", false, StatusUnauthorized},
+		{"@hourly ./a.sh\n", true, StatusAllowed},
+		{"@hourly ./b.sh\n", false, StatusChanged},
+	} {
+		write(step.content)
+		if step.allow {
+			if _, err := st.Allow(dir); err != nil {
+				t.Fatal(err)
+			}
+		}
+		status, _, snapshot, err := st.Inspect(dir)
+		if err != nil || status != step.want || string(snapshot) != step.content {
+			t.Fatalf("Inspect = %s, %q, %v; want %s, %q", status, snapshot, err, step.want, step.content)
+		}
+	}
+	if err := os.Remove(cronrcPath); err != nil {
+		t.Fatal(err)
+	}
+	if status, _, snapshot, err := st.Inspect(dir); err != nil || status != StatusOrphan || snapshot != nil {
+		t.Fatalf("Inspect without .cronrc = %s, %q, %v", status, snapshot, err)
+	}
+}

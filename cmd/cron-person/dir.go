@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -204,14 +205,14 @@ func newDirStatusCommand() *cobra.Command {
 				return err
 			}
 
-			status, rec, err := st.Status(dir)
+			status, rec, snapshot, err := st.Inspect(dir)
 			if err != nil {
 				return err
 			}
 			var parsed *cronrc.File
-			if status != store.StatusMissingCronrc && status != store.StatusOrphan {
+			if snapshot != nil {
 				path := filepath.Join(dir, ".cronrc")
-				parsed, err = cronrc.ParseFile(path)
+				parsed, err = cronrc.Parse(bytes.NewReader(snapshot), path)
 				if err != nil {
 					return fmt.Errorf("parsing %s: %w", path, err)
 				}

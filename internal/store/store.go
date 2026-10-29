@@ -279,6 +279,8 @@ func (s *Store) Status(dir string) (DirStatus, *Record, error) {
 }
 
 // Inspect reads a single .cronrc snapshot from dir and compares its raw-byte hash against the store.
+// It returns the snapshot whenever the file was read, so callers describe exactly the
+// content the status was computed from; only StatusAllowed authorizes executing it.
 func (s *Store) Inspect(dir string) (DirStatus, *Record, []byte, error) {
 	absDir, err := filepath.Abs(dir)
 	if err != nil {
@@ -318,11 +320,11 @@ func (s *Store) Inspect(dir string) (DirStatus, *Record, []byte, error) {
 	currentHash := cronrc.ComputeHash(data)
 
 	if !hasRecord {
-		return StatusUnauthorized, nil, nil, nil
+		return StatusUnauthorized, nil, data, nil
 	}
 
 	if rec.Hash != currentHash {
-		return StatusChanged, &rec, nil, nil
+		return StatusChanged, &rec, data, nil
 	}
 
 	return StatusAllowed, &rec, data, nil
