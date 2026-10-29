@@ -13,7 +13,7 @@ import (
 	"sync"
 	"syscall"
 
-	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v3"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 )

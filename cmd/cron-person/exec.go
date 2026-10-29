@@ -9,7 +9,7 @@ import (
 	"strings"
 	"syscall"
 
-	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v3"
 	"github.com/alexgorbatchev/cron-person-cli/internal/config"
 	"github.com/alexgorbatchev/cron-person-cli/internal/history"
 	"github.com/alexgorbatchev/cron-person-cli/internal/runner"

@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v3"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
 	"github.com/alexgorbatchev/cron-person-cli/internal/display"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"

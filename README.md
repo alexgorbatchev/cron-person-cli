@@ -188,6 +188,12 @@ Descriptive output, warnings, and errors display paths under your home directory
 | :--- | :--- | :--- |
 | `exec` | `<dir> [--] <command...>` | Internal execution engine invoked by crontab runner |
 
+### `cron-person skill`
+
+| Command | Arguments | Description |
+| :--- | :--- | :--- |
+| `skill` | | Print the Skills CLI install command and URL for the `cron-person` agent skill |
+
 # Configuration
 
 `cron-person` reads optional settings from `$XDG_CONFIG_HOME/cron-person/config.json` (fallback `~/.config/cron-person/config.json`, override with `--config`). Omitted settings keep their defaults, and unknown keys are rejected so a misspelled setting fails loudly instead of being ignored.

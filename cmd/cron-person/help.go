@@ -3,14 +3,24 @@ package main
 import (
 	"fmt"
 
-	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v3"
 	"github.com/spf13/cobra"
 )
+
+// skillSource is where the cron-person agent skill is published:
+// skills/cron-person/SKILL.md on the repository's default branch.
+var skillSource = cobrahelptree.SkillSource{Repository: "alexgorbatchev/cron-person-cli", Branch: "main"}
 
 var techCatalog = cobrahelptree.TechCatalog{
 	"cron-person": {
 		Summary:     "Higher-order per-directory crontab manager with direnv-style shell integration",
 		Description: "Higher-order per-directory crontab manager that executes tasks in their respective directory contexts with direnv-style allow/deny authorization.",
+		Env: []cobrahelptree.EnvSpec{
+			{Name: "AGENT", Description: "Set to 1, true, or yes for compact agent-mode output"},
+			{Name: "XDG_STATE_HOME", Description: "Base directory for the default store and run history"},
+			{Name: "XDG_CONFIG_HOME", Description: "Base directory for the default configuration file"},
+			{Name: "SHELL", Description: "Shell that runs tasks when .cronrc does not set SHELL"},
+		},
 	},
 	"cron-person allow": {
 		Summary:     "Authorize .cronrc in directory",
@@ -138,6 +148,7 @@ var techCatalog = cobrahelptree.TechCatalog{
 func setupHelp(cmd *cobra.Command) {
 	err := cobrahelptree.SetupWithOptions(cmd, cobrahelptree.HelpOptions{
 		Catalog: techCatalog,
+		Skill:   skillSource,
 		Tree: cobrahelptree.TreeOptions{
 			HideGeneratedCommands: true,
 		},
