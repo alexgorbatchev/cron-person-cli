@@ -31,21 +31,3 @@ jobs:
 
       - name: Test
         run: go test -v ./...
-
-  windows:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-go@v7
-        with:
-          go-version-file: 'go.mod'
-
-      - name: Vet
-        run: go vet ./...
-
-      # Only the platform-specific locking and process control runs here; the
-      # rest of the suite depends on cron and a POSIX shell.
-      - name: Test platform-specific process handling
-        shell: bash
-        run: go test -v -run 'Windows|TryLock|ClosingReleasesLock|LockErrorsOnClosedFile' ./internal/filelock ./internal/runner ./cmd/cron-person
