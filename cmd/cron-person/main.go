@@ -1,9 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"syscall"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v2"
 	"github.com/alexgorbatchev/cron-person-cli/internal/display"
@@ -24,7 +27,24 @@ func run(args []string, stdout, stderr io.Writer) int {
 		} else {
 			fmt.Fprintf(stderr, "[ERROR] %s\n", display.Error(err))
 		}
-		return 1
+		return exitCode(err)
 	}
 	return 0
+}
+
+// exitCode passes a task's own exit status through to cron and callers, using
+// the shell convention of 128+N for termination by signal N. Every other
+// failure exits 1.
+func exitCode(err error) int {
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) {
+		return 1
+	}
+	if code := exitErr.ExitCode(); code > 0 {
+		return code
+	}
+	if ws, ok := exitErr.Sys().(syscall.WaitStatus); ok && ws.Signaled() {
+		return 128 + int(ws.Signal())
+	}
+	return 1
 }
