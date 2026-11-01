@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v3"
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/cron-person-cli/internal/display"
 	"github.com/alexgorbatchev/cron-person-cli/internal/history"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"

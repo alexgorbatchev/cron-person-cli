@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v3"
+	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/cron-person-cli/internal/hook"
 	"github.com/spf13/cobra"
 )
