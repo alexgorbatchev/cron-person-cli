@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
+	"github.com/alexgorbatchev/cron-person-cli/internal/filelock"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 )
 
@@ -257,6 +258,12 @@ func Preview(st *store.Store, binPath, configPath string) (string, int, error) {
 
 // Sync reads the store, generates the managed block, and updates the system crontab.
 func Sync(st *store.Store, binPath, configPath string) (int, error) {
+	unlock, err := lockUpdates(st)
+	if err != nil {
+		return 0, err
+	}
+	defer unlock()
+
 	managedBlock, count, err := Preview(st, binPath, configPath)
 	if err != nil {
 		return 0, err
@@ -278,7 +285,13 @@ func Sync(st *store.Store, binPath, configPath string) (int, error) {
 }
 
 // Uninstall removes the managed block from the system crontab.
-func Uninstall() error {
+func Uninstall(st *store.Store) error {
+	unlock, err := lockUpdates(st)
+	if err != nil {
+		return err
+	}
+	defer unlock()
+
 	existing, err := ReadSystemCrontab()
 	if err != nil {
 		return err
@@ -289,4 +302,27 @@ func Uninstall() error {
 		return err
 	}
 	return WriteSystemCrontab(cleaned)
+}
+
+// lockUpdates serializes the read-modify-write of the user crontab among
+// cron-person processes that share st's state directory. crontab(1) has no
+// compare-and-swap, so a writer outside cron-person can still be overwritten
+// while an update is between reading and installing the crontab.
+func lockUpdates(st *store.Store) (unlock func(), err error) {
+	dir := filepath.Dir(st.Path())
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, fmt.Errorf("locking crontab updates: %w", err)
+	}
+	f, err := os.OpenFile(filepath.Join(dir, "crontab.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, fmt.Errorf("locking crontab updates: %w", err)
+	}
+	if err := filelock.Lock(f); err != nil {
+		_ = f.Close()
+		return nil, fmt.Errorf("locking crontab updates: %w", err)
+	}
+	return func() {
+		_ = filelock.Unlock(f) // Closing the file releases the lock anyway.
+		_ = f.Close()
+	}, nil
 }

@@ -100,7 +100,11 @@ func newCrontabUninstallCommand() *cobra.Command {
 		Short: "Remove cron-person managed block from system crontab",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := crontab.Uninstall(); err != nil {
+			st, err := getStore(cmd)
+			if err != nil {
+				return err
+			}
+			if err := crontab.Uninstall(st); err != nil {
 				return fmt.Errorf("uninstalling crontab block: %w", err)
 			}
 

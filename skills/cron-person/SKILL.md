@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-03 14:20
+  last_modified: 2026-11-03 15:10
   status: current
 ---
 
@@ -116,7 +116,7 @@ Summarizes the installation and the configuration file's state: `defaults` (no f
 
 ### `cron-person crontab sync`
 
-Compiles every authorized directory's tasks and replaces the managed block of the user crontab via `crontab -l` and `crontab -`, leaving other entries untouched. Each generated entry calls this binary with the absolute `--store` and `--config` paths, so rerun `crontab sync` after moving the binary or changing those paths. Fails without changing the crontab when the configuration file is invalid. Agent output: `synced_directories`, `status: success`.
+Compiles every authorized directory's tasks and replaces the managed block of the user crontab via `crontab -l` and `crontab -`, leaving other entries untouched. Each generated entry calls this binary with the absolute `--store` and `--config` paths, so rerun `crontab sync` after moving the binary or changing those paths. Fails without changing the crontab when the configuration file is invalid. Holds `crontab.lock` beside the store while it reads and installs the crontab, so concurrent `crontab sync` and `crontab uninstall` runs sharing a state directory wait for each other; a crontab installed by another program in that window can be overwritten, and a `crontab -e` session opened before a sync reinstalls the old block when saved, so rerun `crontab sync` after hand edits. Agent output: `synced_directories`, `status: success`.
 
 ### `cron-person crontab show`
 
@@ -124,7 +124,7 @@ Prints the managed block `crontab sync` would install, without modifying the cro
 
 ### `cron-person crontab uninstall`
 
-Removes the managed block from the user crontab. Agent output: `crontab: uninstalled`.
+Removes the managed block from the user crontab, holding the same `crontab.lock` as `crontab sync`. Agent output: `crontab: uninstalled`.
 
 ### `cron-person task list`
 
