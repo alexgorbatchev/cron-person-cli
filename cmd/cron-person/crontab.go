@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/cron-person-cli/internal/config"
@@ -100,11 +101,12 @@ func newCrontabUninstallCommand() *cobra.Command {
 		Short: "Remove cron-person managed block from system crontab",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			st, err := getStore(cmd)
+			// The store is not loaded, so a damaged one cannot block removal.
+			storePath, err := getStorePath(cmd)
 			if err != nil {
 				return err
 			}
-			if err := crontab.Uninstall(st); err != nil {
+			if err := crontab.Uninstall(filepath.Dir(storePath)); err != nil {
 				return fmt.Errorf("uninstalling crontab block: %w", err)
 			}
 

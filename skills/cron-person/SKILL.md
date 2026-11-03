@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-03 15:10
+  last_modified: 2026-11-03 15:40
   status: current
 ---
 
@@ -124,7 +124,7 @@ Prints the managed block `crontab sync` would install, without modifying the cro
 
 ### `cron-person crontab uninstall`
 
-Removes the managed block from the user crontab, holding the same `crontab.lock` as `crontab sync`. Agent output: `crontab: uninstalled`.
+Removes the managed block from the user crontab, holding the same `crontab.lock` as `crontab sync`. It never loads the store, so it works even when the store file is damaged. Agent output: `crontab: uninstalled`.
 
 ### `cron-person task list`
 

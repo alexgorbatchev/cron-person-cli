@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 )
 
 func openLock(t *testing.T, path string) *os.File {
@@ -61,5 +62,38 @@ func TestLockErrorsOnClosedFile(t *testing.T) {
 		if err := fn(f); err == nil || errors.Is(err, ErrLocked) {
 			t.Fatalf("%s on closed file = %v, want an OS error", name, err)
 		}
+	}
+}
+
+func TestLockPathWaitsForTheHolder(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "update.lock")
+	holder, err := LockPath(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	acquired := make(chan *os.File, 1)
+	go func() {
+		f, err := LockPath(path)
+		if err != nil {
+			t.Error(err)
+		}
+		acquired <- f
+	}()
+	select {
+	case <-acquired:
+		t.Fatal("second LockPath acquired a held lock")
+	case <-time.After(100 * time.Millisecond):
+	}
+	if err := holder.Close(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case f := <-acquired:
+		_ = f.Close()
+	case <-time.After(5 * time.Second):
+		t.Fatal("LockPath never acquired the released lock")
+	}
+	if _, err := LockPath(filepath.Join(path, "missing", "update.lock")); err == nil {
+		t.Fatal("LockPath succeeded in a missing directory")
 	}
 }

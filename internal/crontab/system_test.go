@@ -137,7 +137,7 @@ func TestSyncAndUninstall(t *testing.T) {
 			t.Fatalf("sync is not idempotent: first=%q second=%q", first, got)
 		}
 	}
-	if err := Uninstall(st); err != nil {
+	if err := Uninstall(filepath.Dir(st.Path())); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(path)
@@ -164,7 +164,7 @@ func TestSyncAndUninstallFailures(t *testing.T) {
 				if operation == "sync" {
 					_, err = Sync(st, "cron-person", testConfig)
 				} else {
-					err = Uninstall(st)
+					err = Uninstall(filepath.Dir(st.Path()))
 				}
 				if err == nil || !strings.Contains(err.Error(), failure+" refused") {
 					t.Fatalf("lost subprocess error: %v", err)
@@ -259,7 +259,7 @@ func TestSyncAndUninstallPreserveMarkerSubstringsAndRejectMalformed(t *testing.T
 	userJobs := "@daily echo '" + BlockStart + "'\n@hourly personal-job\n@daily echo '" + BlockEnd + "'\n"
 	writeCrontabFile(t, path, userJobs)
 
-	if err := Uninstall(st); err != nil {
+	if err := Uninstall(filepath.Dir(st.Path())); err != nil {
 		t.Fatalf("Uninstall without managed block err=%v", err)
 	}
 	if data, err := os.ReadFile(path); err != nil || string(data) != userJobs {
@@ -277,7 +277,7 @@ func TestSyncAndUninstallPreserveMarkerSubstringsAndRejectMalformed(t *testing.T
 		t.Fatalf("Sync failed to preserve unmanaged marker substrings: %q", syncedData)
 	}
 
-	if err := Uninstall(st); err != nil {
+	if err := Uninstall(filepath.Dir(st.Path())); err != nil {
 		t.Fatalf("Uninstall err=%v", err)
 	}
 	uninstalledData, err := os.ReadFile(path)
@@ -297,7 +297,7 @@ func TestSyncAndUninstallPreserveMarkerSubstringsAndRejectMalformed(t *testing.T
 		if data, err := os.ReadFile(path); err != nil || string(data) != malformed {
 			t.Fatalf("Sync modified malformed crontab: got=%q want=%q err=%v", data, malformed, err)
 		}
-		if err := Uninstall(st); err == nil {
+		if err := Uninstall(filepath.Dir(st.Path())); err == nil {
 			t.Fatalf("expected Uninstall to reject malformed crontab %q", malformed)
 		}
 		if data, err := os.ReadFile(path); err != nil || string(data) != malformed {
@@ -306,8 +306,12 @@ func TestSyncAndUninstallPreserveMarkerSubstringsAndRejectMalformed(t *testing.T
 	}
 }
 
-func TestConcurrentUpdatesWaitForTheUpdateInFlight(t *testing.T) {
-	path := isolatedCrontab(t)
+// pausedUpdate prepares an isolated crontab holding userJobs and a store with
+// one allowed project, and arms the fixture to pause every read after it has
+// produced the crontab.
+func pausedUpdate(t *testing.T, userJobs string) (crontabPath string, st *store.Store, release func(), reached string) {
+	t.Helper()
+	crontabPath = isolatedCrontab(t)
 	dir := t.TempDir()
 	st, err := store.NewStore(filepath.Join(dir, "state", "allowed.json"))
 	if err != nil {
@@ -321,28 +325,40 @@ func TestConcurrentUpdatesWaitForTheUpdateInFlight(t *testing.T) {
 	if _, err := st.Allow(project); err != nil {
 		t.Fatal(err)
 	}
-	userJobs := "@weekly personal-backup\n"
-	writeCrontabFile(t, path, userJobs)
+	writeCrontabFile(t, crontabPath, userJobs)
 	barrier := filepath.Join(dir, "barrier")
 	t.Setenv("TEST_CRONTAB_READ_BARRIER", barrier)
+	release = func() {
+		if err := os.WriteFile(barrier+".release", nil, 0o600); err != nil {
+			t.Error(err)
+		}
+	}
+	// A failed test must not leave fixture reads waiting forever.
+	t.Cleanup(release)
+	return crontabPath, st, release, barrier + ".reached"
+}
+
+func TestConcurrentUpdatesWaitForTheUpdateInFlight(t *testing.T) {
+	userJobs := "@weekly personal-backup\n"
+	path, st, release, reached := pausedUpdate(t, userJobs)
 
 	syncDone := make(chan error, 1)
 	go func() {
 		_, err := Sync(st, "/opt/cron-person", testConfig)
 		syncDone <- err
 	}()
-	waitForPath(t, barrier+".reached")
+	waitForPath(t, reached)
 
 	// A second cron-person update starts while the sync sits between reading
 	// and installing the crontab; it must not read until the sync installs.
 	uninstallDone := make(chan error, 1)
-	go func() { uninstallDone <- Uninstall(st) }()
+	go func() { uninstallDone <- Uninstall(filepath.Dir(st.Path())) }()
 	time.Sleep(200 * time.Millisecond)
 	if calls := crontabCalls(t, path); calls != "-l\n" {
 		t.Fatalf("uninstall ran during the sync's update: calls=%q", calls)
 	}
 
-	writeCrontabFile(t, barrier+".release", "")
+	release()
 	for _, done := range []chan error{syncDone, uninstallDone} {
 		if err := <-done; err != nil {
 			t.Fatal(err)
@@ -353,6 +369,37 @@ func TestConcurrentUpdatesWaitForTheUpdateInFlight(t *testing.T) {
 	}
 	if data, err := os.ReadFile(path); err != nil || strings.TrimRight(string(data), "\n")+"\n" != userJobs {
 		t.Fatalf("crontab=%q err=%v, want the personal jobs without the managed block", data, err)
+	}
+}
+
+// TestUpdatesOverwriteExternalEditsMadeInFlight pins the documented limit:
+// crontab(1) has no compare-and-swap, so a crontab another program installs
+// between an update's read and its install is replaced.
+func TestUpdatesOverwriteExternalEditsMadeInFlight(t *testing.T) {
+	for _, operation := range []string{"sync", "uninstall"} {
+		t.Run(operation, func(t *testing.T) {
+			userJobs := "@weekly personal-backup\n"
+			path, st, release, reached := pausedUpdate(t, userJobs)
+			done := make(chan error, 1)
+			go func() {
+				if operation == "sync" {
+					_, err := Sync(st, "/opt/cron-person", testConfig)
+					done <- err
+					return
+				}
+				done <- Uninstall(filepath.Dir(st.Path()))
+			}()
+			waitForPath(t, reached)
+			writeCrontabFile(t, path, userJobs+"@daily edited-in-flight\n")
+			release()
+			if err := <-done; err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil || strings.Contains(string(data), "edited-in-flight") || !strings.HasPrefix(string(data), userJobs) {
+				t.Fatalf("crontab=%q err=%v, want the update's own result", data, err)
+			}
+		})
 	}
 }
 
@@ -369,8 +416,13 @@ func TestUpdatesReportUnavailableLock(t *testing.T) {
 	if _, err := Sync(st, "/opt/cron-person", testConfig); err == nil || !strings.Contains(err.Error(), "locking crontab updates") {
 		t.Fatalf("sync error=%v", err)
 	}
-	if err := Uninstall(st); err == nil || !strings.Contains(err.Error(), "locking crontab updates") {
+	if err := Uninstall(stateDir); err == nil || !strings.Contains(err.Error(), "locking crontab updates") {
 		t.Fatalf("uninstall error=%v", err)
+	}
+	blocked := filepath.Join(t.TempDir(), "file")
+	writeCrontabFile(t, blocked, "")
+	if err := Uninstall(filepath.Join(blocked, "state")); err == nil || !strings.Contains(err.Error(), "locking crontab updates") {
+		t.Fatalf("uninstall with unusable state directory error=%v", err)
 	}
 }
 

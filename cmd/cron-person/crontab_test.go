@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/alexgorbatchev/cron-person-cli/internal/crontab"
 )
 
 func cliCrontab(t *testing.T) string {
@@ -35,7 +37,7 @@ func TestCLICrontabBothModes(t *testing.T) {
 			if err != nil || !strings.HasPrefix(string(data), userJobs) || !strings.Contains(string(data), "printf scheduled") {
 				t.Fatalf("synchronized crontab=%q error=%v", data, err)
 			}
-			requireCLIOutput(t, []string{"crontab", "uninstall"}, modeText(mode, "Removed cron-person", "crontab: uninstalled"))
+			requireCLIOutput(t, []string{"--store", state, "crontab", "uninstall"}, modeText(mode, "Removed cron-person", "crontab: uninstalled"))
 			data, err = os.ReadFile(path)
 			if err != nil || !strings.HasPrefix(string(data), userJobs) || strings.Contains(string(data), "printf scheduled") {
 				t.Fatalf("uninstalled crontab=%q error=%v", data, err)
@@ -67,5 +69,18 @@ func TestCLICrontabFailures(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+func TestCLICrontabUninstallIgnoresDamagedStore(t *testing.T) {
+	path := cliCrontab(t)
+	userJobs := "@weekly personal-job\n"
+	writeCLIFile(t, path, userJobs+crontab.BlockStart+"\n@daily managed\n"+crontab.BlockEnd+"\n")
+	state := filepath.Join(t.TempDir(), "allowed.json")
+	writeCLIFile(t, state, "{not json")
+	requireCLIOutput(t, []string{"--store", state, "crontab", "uninstall"}, "Removed cron-person")
+	data, err := os.ReadFile(path)
+	if err != nil || strings.TrimRight(string(data), "\n")+"\n" != userJobs {
+		t.Fatalf("crontab=%q err=%v, want only the personal jobs", data, err)
 	}
 }

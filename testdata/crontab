@@ -5,14 +5,6 @@ set -eu
 printf '%s\n' "$*" >> "${TEST_CRONTAB_FILE}.calls"
 case "$*" in
   -l)
-    if [ -n "${TEST_CRONTAB_READ_BARRIER:-}" ]; then
-      # Hold the read open until the test releases it, so it can interleave
-      # other writers between this read and the following install.
-      : > "${TEST_CRONTAB_READ_BARRIER}.reached"
-      while [ ! -f "${TEST_CRONTAB_READ_BARRIER}.release" ]; do
-        /bin/sleep 0.01
-      done
-    fi
     if [ -n "${TEST_CRONTAB_READ_ERROR:-}" ]; then
       printf '%s\n' "$TEST_CRONTAB_READ_ERROR" >&2
       exit 1
@@ -22,6 +14,14 @@ case "$*" in
       exit 1
     fi
     /bin/cat "$TEST_CRONTAB_FILE"
+    if [ -n "${TEST_CRONTAB_READ_BARRIER:-}" ]; then
+      # The caller has the contents but is still waiting for this read to
+      # finish, so the test can interleave other writers before the install.
+      : > "${TEST_CRONTAB_READ_BARRIER}.reached"
+      while [ ! -f "${TEST_CRONTAB_READ_BARRIER}.release" ]; do
+        /bin/sleep 0.01
+      done
+    fi
     ;;
   -)
     if [ -n "${TEST_CRONTAB_WRITE_ERROR:-}" ]; then

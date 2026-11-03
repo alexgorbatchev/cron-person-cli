@@ -258,11 +258,11 @@ func Preview(st *store.Store, binPath, configPath string) (string, int, error) {
 
 // Sync reads the store, generates the managed block, and updates the system crontab.
 func Sync(st *store.Store, binPath, configPath string) (int, error) {
-	unlock, err := lockUpdates(st)
+	lock, err := lockUpdates(filepath.Dir(st.Path()))
 	if err != nil {
 		return 0, err
 	}
-	defer unlock()
+	defer lock.Close() // Releases the lock.
 
 	managedBlock, count, err := Preview(st, binPath, configPath)
 	if err != nil {
@@ -284,13 +284,14 @@ func Sync(st *store.Store, binPath, configPath string) (int, error) {
 	return count, nil
 }
 
-// Uninstall removes the managed block from the system crontab.
-func Uninstall(st *store.Store) error {
-	unlock, err := lockUpdates(st)
+// Uninstall removes the managed block from the system crontab. It needs only
+// the state directory for its lock, so a damaged store never blocks removal.
+func Uninstall(stateDir string) error {
+	lock, err := lockUpdates(stateDir)
 	if err != nil {
 		return err
 	}
-	defer unlock()
+	defer lock.Close() // Releases the lock.
 
 	existing, err := ReadSystemCrontab()
 	if err != nil {
@@ -305,24 +306,17 @@ func Uninstall(st *store.Store) error {
 }
 
 // lockUpdates serializes the read-modify-write of the user crontab among
-// cron-person processes that share st's state directory. crontab(1) has no
-// compare-and-swap, so a writer outside cron-person can still be overwritten
-// while an update is between reading and installing the crontab.
-func lockUpdates(st *store.Store) (unlock func(), err error) {
-	dir := filepath.Dir(st.Path())
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+// cron-person processes that share stateDir, so the last update installs the
+// newest store. crontab(1) has no compare-and-swap, so a writer outside
+// cron-person can still be overwritten while an update is between reading
+// and installing the crontab.
+func lockUpdates(stateDir string) (*os.File, error) {
+	if err := os.MkdirAll(stateDir, 0o755); err != nil {
 		return nil, fmt.Errorf("locking crontab updates: %w", err)
 	}
-	f, err := os.OpenFile(filepath.Join(dir, "crontab.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	lock, err := filelock.LockPath(filepath.Join(stateDir, "crontab.lock"))
 	if err != nil {
 		return nil, fmt.Errorf("locking crontab updates: %w", err)
 	}
-	if err := filelock.Lock(f); err != nil {
-		_ = f.Close()
-		return nil, fmt.Errorf("locking crontab updates: %w", err)
-	}
-	return func() {
-		_ = filelock.Unlock(f) // Closing the file releases the lock anyway.
-		_ = f.Close()
-	}, nil
+	return lock, nil
 }

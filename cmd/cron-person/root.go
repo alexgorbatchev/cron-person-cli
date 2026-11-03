@@ -25,15 +25,24 @@ func writeOutput(cmd *cobra.Command, s string) error {
 }
 
 func getStore(cmd *cobra.Command) (*store.Store, error) {
+	path, err := getStorePath(cmd)
+	if err != nil {
+		return nil, err
+	}
+	return store.NewStore(path)
+}
+
+// getStorePath resolves the authorization store path without loading it.
+func getStorePath(cmd *cobra.Command) (string, error) {
 	storePath, _ := cmd.Flags().GetString("store")
 	if storePath == "" {
 		var err error
 		storePath, err = store.DefaultStorePath()
 		if err != nil {
-			return nil, fmt.Errorf("resolving store path: %w", err)
+			return "", fmt.Errorf("resolving store path: %w", err)
 		}
 	}
-	return store.NewStore(storePath)
+	return filepath.Abs(storePath)
 }
 
 func getConfigPath(cmd *cobra.Command) (string, error) {

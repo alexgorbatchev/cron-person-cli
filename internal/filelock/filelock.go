@@ -3,7 +3,23 @@
 // that its holder is still alive.
 package filelock
 
-import "errors"
+import (
+	"errors"
+	"os"
+)
 
 // ErrLocked is returned by TryLock when another open file holds the lock.
 var ErrLocked = errors.New("file is locked")
+
+// LockPath opens the lock file at path, creating it when missing, and blocks
+// until it holds an exclusive lock on it. Closing the file releases the lock.
+func LockPath(path string) (*os.File, error) {
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
+	if err != nil {
+		return nil, err
+	}
+	if err := Lock(f); err != nil {
+		return nil, errors.Join(err, f.Close())
+	}
+	return f, nil
+}
