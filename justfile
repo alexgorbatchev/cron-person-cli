@@ -35,6 +35,12 @@ verify-release tag:
 bench:
     go test -run '^$' -bench . -benchmem -benchtime 5x ./cmd/cron-person
 
+# Run the tests with the race detector and fail when any package is below 90% statement coverage, as CI does
+coverage:
+    mkdir -p .tmp
+    go test -race -covermode=atomic -coverprofile=.tmp/cover.out ./...
+    go tool go-test-coverage --config=.testcoverage.yml
+
 # Build binary into bin/
 build:
     mkdir -p bin

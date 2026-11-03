@@ -29,8 +29,13 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      - name: Test
-        run: go test ./...
+      - name: Test with the race detector and coverage
+        run: |
+          mkdir -p .tmp
+          go test -race -covermode=atomic -coverprofile=.tmp/cover.out ./...
+
+      - name: Enforce per-package coverage
+        run: go tool go-test-coverage --config=.testcoverage.yml
 
   release:
     needs: verify

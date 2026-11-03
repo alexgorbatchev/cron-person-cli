@@ -17,6 +17,7 @@ Higher-order per-directory crontab manager with direnv-style shell integration
 - **Run Cron Daemon Integration Test:** `just test-daemon` installs generated entries into a real Debian cron inside a disposable testcontainers container and waits for real fires (about 5 minutes, needs Docker; `DOCKER_HOST` defaults to the current Docker context). It sits behind the `daemon` build tag, so `just test` stays hermetic.
 - **Verify a Published Release:** `just verify-release <tag>` reads the tag's release workflow run, assets, `checksums.txt`, and each binary's embedded version from GitHub without changing anything; run it after every release.
 - **Measure Capacity:** `just bench` benchmarks `status`, `task list`, `crontab show`, the prompt hook, and `allow` with 10, 100, and 1000 tracked directories of ten-task `.cronrc` files (`cmd/cron-person/capacity_test.go`). Run it before and after changes to whole-store paths.
+- **Check Coverage and Races:** `just coverage` runs the suite under the race detector and fails when any package's own tests cover less than 90% of its statements (`.testcoverage.yml`, `go tool go-test-coverage`). CI and the release `verify` job run the same commands. The race detector only sees one test process; cross-process behavior needs the subprocess fixtures.
 - **Run Static Analysis & Tests:** `just check` (`go vet ./... && go test -v ./...`)
 - **Run Linter / Static Analysis:** `just vet` or `just lint` (`go vet ./...`)
 - **Format Source Code:** `just fmt` (`go fmt ./...`)
@@ -35,7 +36,7 @@ Higher-order per-directory crontab manager with direnv-style shell integration
 - **Generated Commands:** Keep the entire task command inside one shell argument, escape cron percent signs, and pass the absolute authorization store and configuration paths explicitly. Test generated entries through the outer shell as in `cmd/cron-person/generated_test.go`.
 
 ## Boundaries
-- **Always:** Maintain >= 90% statement code coverage across Go packages.
+- **Always:** Maintain >= 90% statement code coverage in every Go package; `just coverage` and CI enforce it.
 - **Always:** Run `just test` and `just vet` before committing changes.
 - **Always:** Update `skills/cron-person/SKILL.md` and its `last_modified` in the same change as any command, argument, flag, default, environment variable, configuration setting, output, or side-effect change.
 - **Never:** Commit compiled Go binaries (e.g. `bin/cron-person`) to git.

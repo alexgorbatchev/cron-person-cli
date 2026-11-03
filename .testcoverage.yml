@@ -1,0 +1,5 @@
+# Coverage gate for `just coverage` and CI: every package's own tests must
+# cover at least 90% of its statements (AGENTS.md).
+profile: .tmp/cover.out
+threshold:
+  package: 90
