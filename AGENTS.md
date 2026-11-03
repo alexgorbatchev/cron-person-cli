@@ -27,7 +27,7 @@ Higher-order per-directory crontab manager with direnv-style shell integration
 
 ## Conventions
 - **Output Formatting & No Decorative Headers:** All CLI output must be plain text without emojis across all modes.
-- **Help Screens & Terminal Width:** CLI help output (`--help`) must display an aligned hierarchical tree view with `├─` and `╰─` glyphs powered by `github.com/alexgorbatchev/cobra-help-tree/v4` (`cobrahelptree.SetupWithOptions` in `setupHelp`), with long help text wrapped to the terminal width and never truncated.
+- **Help Screens & Terminal Width:** CLI help output (`--help`) must display an aligned hierarchical tree view with `├─` and `╰─` glyphs powered by `github.com/alexgorbatchev/cobra-help-tree/v4` (`cobrahelptree.SetupWithOptions` in `setupHelp`), with long help text wrapped to the terminal width and never truncated. Human help takes its width from `$COLUMNS`, then the terminal; output that is neither sized nor a terminal stays unwrapped, and a single word wider than the screen stays whole on its own line. Agent help (`AGENT=1`) is never wrapped or shortened. `cmd/cron-person/help_width_test.go` pins this contract.
 - **Agent Mode (`AGENT=1`):** When `AGENT=1` is set, output compact key-value pairs or bullets.
 - **Hermetic Unit Tests:** All unit tests must remain 100% offline and hermetic.
 - **Agent Skill:** `skills/cron-person/SKILL.md` is the operating reference for agents; `cron-person skill` prints only the install command and URL that `cobra-help-tree` generates from `skillSource` in `cmd/cron-person/help.go`, never the skill itself. `TestSkillDocumentsEveryCommandAndFlag` fails when the skill omits a command, flag, argument, or catalog environment variable.
