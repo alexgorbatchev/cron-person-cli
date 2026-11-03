@@ -203,6 +203,26 @@ func TestGenerateBlock(t *testing.T) {
 	}
 }
 
+func TestGenerateBlockKeepsCronrcVariablesOutOfTheCrontab(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, ".cronrc")
+	content := "MAILTO=ops@example.com\nCRON_TZ=UTC\nSHELL=/bin/bash\n@hourly ./task.sh\n"
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	block, err := GenerateBlock([]store.Record{{Dir: dir, Path: path}}, Invocation{Bin: "/opt/cron-person", Store: filepath.Join(dir, "state.json"), Config: testConfig})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Cron applies an assignment line to every entry after it, so one leaking
+	// from a .cronrc would retarget mail, time zone, or shell for other jobs.
+	for _, line := range strings.Split(block, "\n") {
+		if line != "" && !strings.HasPrefix(line, "#") && !strings.HasPrefix(line, "@hourly ") {
+			t.Fatalf("managed block contains a non-entry line %q:\n%s", line, block)
+		}
+	}
+}
+
 func TestHelperCronPersonRunner(t *testing.T) {
 	if os.Getenv("GO_WANT_CRON_PERSON_HELPER") != "1" {
 		return

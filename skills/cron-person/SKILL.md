@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-03 12:30
+  last_modified: 2026-11-03 13:20
   status: current
 ---
 
@@ -19,7 +19,7 @@ Set `AGENT=1` for compact `key: value` output. Every path printed under the home
 
 ## `.cronrc` format
 
-A `.cronrc` uses crontab syntax: `NAME=value` lines define environment variables for every task, and schedule lines (`*/5 * * * * ./script.sh`, `@hourly make sync`) define tasks. Each task runs with its working directory set to the folder containing `.cronrc`, through `$SHELL -c` (the `.cronrc` `SHELL` wins, then the inherited `SHELL`, then `/bin/sh`). Tasks also receive `CRON_PERSON_DIR` (the directory) and `CRON_PERSON_CRONRC` (the `.cronrc` path), and `PWD` names the task directory rather than the directory `cron-person` was started from.
+A `.cronrc` uses crontab syntax: `NAME=value` lines define environment variables for every task, and schedule lines (`*/5 * * * * ./script.sh`, `@hourly make sync`) define tasks. Each task runs with its working directory set to the folder containing `.cronrc`, through `$SHELL -c` (the `.cronrc` `SHELL` wins, then the inherited `SHELL`, then `/bin/sh`). Tasks also receive `CRON_PERSON_DIR` (the directory) and `CRON_PERSON_CRONRC` (the `.cronrc` path), and `PWD` names the task directory rather than the directory `cron-person` was started from. `.cronrc` variables reach only the task and are never written to the user crontab, so scheduler controls such as `MAILTO`, `MAILFROM`, `CRON_TZ`, and cron's own `SHELL` have no scheduling effect there; set them in the user crontab above the managed block instead. Schedules fire in the cron daemon's time zone, and daylight saving changes follow the daemon (cronie skips entries in a skipped hour and runs entries in a repeated hour twice; Debian cron catches up after forward changes under 3 hours).
 
 ## Workflows
 

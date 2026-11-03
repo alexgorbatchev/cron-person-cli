@@ -44,6 +44,20 @@
 
 - [cron](https://man7.org/linux/man-pages/man5/crontab.5.html) daemon with standard `crontab` CLI support.
 
+# Scheduler Compatibility
+
+`cron-person crontab sync` installs plain five-field or `@descriptor` entries into the user crontab through `crontab -`, and the cron daemon decides when they fire. Supported daemons are the Vixie cron family that reads per-user crontabs installed by `crontab(1)`:
+
+| Daemon | Typical platforms | Schedule time zone | Clock and DST changes |
+| :--- | :--- | :--- | :--- |
+| [cronie](https://man7.org/linux/man-pages/man5/crontab.5.html) | Fedora, RHEL, Arch | Daemon local time; `CRON_TZ` in the user crontab changes it | Entries in a skipped hour do not run; entries in a repeated hour run twice |
+| [Debian cron](https://manpages.debian.org/bookworm/cron/cron.8.en.html) | Debian, Ubuntu | System time zone (`/etc/timezone`), one zone for all jobs | Jobs skipped by a forward change of less than 3 hours run soon after it; repeated time does not rerun them |
+| macOS cron | macOS | System local time | Not verified here; see `man 8 cron` on the machine |
+
+Generated entries assume a POSIX shell, which is cron's default `SHELL`.
+
+**Scheduler controls versus task environment**: `NAME=value` lines in `.cronrc` reach only the task, through `cron-person exec`; they are never written into the user crontab, so cron itself never sees them. `MAILTO`, `MAILFROM`, `CRON_TZ`, and cron's own `SHELL` and `HOME` therefore have no scheduling effect when set in `.cronrc`. To change them for cron-person entries, set them in the user crontab above the managed block, where cron applies them to every entry that follows. Inside a task, variables resolve in this order, later winning: the environment cron provides, `.cronrc` assignments, then `PWD`, `CRON_PERSON_DIR`, and `CRON_PERSON_CRONRC`.
+
 # Installation
 
 Download the prebuilt binary for your platform from the [latest release](https://github.com/alexgorbatchev/cron-person-cli/releases/latest).
