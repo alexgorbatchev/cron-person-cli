@@ -20,7 +20,11 @@ func runProcess(t *testing.T, stdout *os.File, args ...string) (code int, out, e
 		t.Fatal(err)
 	}
 	cmd := exec.Command(exe, args...)
-	cmd.Env = append(os.Environ(), "AGENT=0", "SHELL=/bin/sh")
+	// A private home keeps the default configuration and state away from
+	// the developer's.
+	home := t.TempDir()
+	cmd.Env = append(os.Environ(), "AGENT=0", "SHELL=/bin/sh", "HOME="+home,
+		"XDG_CONFIG_HOME="+filepath.Join(home, ".config"), "XDG_STATE_HOME="+filepath.Join(home, ".local", "state"))
 	var outBuf, errBuf bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &outBuf, &errBuf
 	if stdout != nil {
@@ -59,6 +63,9 @@ func TestProcessExitCodesAndStreams(t *testing.T) {
 		{"task exit status", []string{"--store", state, "exec", project, "--", "exit 7"}, 7, "", "[ERROR] task failed in"},
 		{"task killed by a signal", []string{"--store", state, "exec", project, "--", "kill -TERM $$"}, 128 + 15, "", "signal: terminated"},
 		{"refused task", []string{"--store", state, "exec", empty, "--", "true"}, 1, "", "[ERROR] no .cronrc file found"},
+		// The recorder child reports the failure; the foreground must not
+		// print it again.
+		{"manual task exit status", []string{"--store", state, "task", "run", project, "exit 9"}, 9, "", "[ERROR] task failed in"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			code, stdout, stderr := runProcess(t, nil, tt.args...)
@@ -90,7 +97,7 @@ func TestProcessReportsUnwritableStdout(t *testing.T) {
 	}
 	defer readOnly.Close()
 	code, _, stderr := runProcess(t, readOnly, "--store", state, "status")
-	if code != 1 || !strings.HasPrefix(stderr, "[ERROR] ") || strings.Count(stderr, "\n") != 1 {
-		t.Fatalf("exit %d, stderr %q; want exit 1 with one error line", code, stderr)
+	if code != 1 || !strings.HasPrefix(stderr, "[ERROR] ") || strings.Count(stderr, "\n") != 1 || !strings.Contains(stderr, "bad file descriptor") {
+		t.Fatalf("exit %d, stderr %q; want exit 1 with one error line about the write", code, stderr)
 	}
 }

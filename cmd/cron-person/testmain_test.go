@@ -12,7 +12,7 @@ const asCLIEnv = "CRON_PERSON_TEST_AS_CLI"
 
 func TestMain(m *testing.M) {
 	if os.Getenv(asCLIEnv) == "1" {
-		os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
+		main()
 	}
 	if err := os.Setenv(asCLIEnv, "1"); err != nil {
 		fmt.Fprintln(os.Stderr, err)
