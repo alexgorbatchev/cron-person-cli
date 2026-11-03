@@ -245,6 +245,11 @@ Descriptive output, warnings, and errors display paths under your home directory
 
 Run `cron-person crontab sync` after moving the configuration file so scheduled entries use the new path.
 
+# Development
+
+- `just test` runs the unit tests. They are hermetic: crontab access goes through a file-backed fake `crontab` in `testdata/`, and no test reads or changes your crontab.
+- `just test-daemon` is the opt-in integration check. It cross-compiles cron-person, installs its generated entries into a real Debian cron inside a disposable container, and waits for actual fires to verify the working directory, `.cronrc` environment, literal percent signs, refusal of changed and revoked directories, in-place binary upgrades, re-syncing after moving the binary, and uninstall. It needs Docker and takes about five minutes.
+
 # Name Rationale
 
 Originally conceived as `cron-man` (short for *cron manager*). However, "cron man" felt out of touch with the times, so it became `cron-person` instead.

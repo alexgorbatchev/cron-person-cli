@@ -16,6 +16,10 @@ run-ai *args: build
 test:
     go test -v ./...
 
+# Run generated crontab entries under a real cron daemon in a disposable container (needs Docker; takes about 5 minutes)
+test-daemon:
+    DOCKER_HOST="${DOCKER_HOST:-$(docker context inspect --format '{{{{.Endpoints.docker.Host}}')}" go test -tags daemon -count=1 -v -timeout 15m -run TestDaemonRunsGeneratedEntries ./cmd/cron-person
+
 # Build binary into bin/
 build:
     mkdir -p bin
