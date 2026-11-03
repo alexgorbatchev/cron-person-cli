@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-03 15:40
+  last_modified: 2026-11-03 16:30
   status: current
 ---
 
@@ -16,6 +16,8 @@ metadata:
 `cron-person` runs cron tasks declared in per-directory `.cronrc` files. A directory's tasks run only after its `.cronrc` is authorized with `cron-person allow`; any change to the file revokes that authorization until it is approved again. Authorized tasks are compiled into a tagged block of the user crontab, and every run is recorded with its exit status and captured output.
 
 Set `AGENT=1` for compact `key: value` output. Every path printed under the home directory is shown as `~`.
+
+Scheduling needs a cron daemon and the `crontab` command, available on Linux and macOS. Windows builds handle authorization, `exec`, `task run`, and run history only: `crontab sync` and `crontab uninstall` fail without a `crontab` executable, and tasks need `SHELL` naming a shell that accepts `-c`.
 
 ## `.cronrc` format
 
