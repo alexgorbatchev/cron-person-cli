@@ -21,9 +21,9 @@ jobs:
           go-version-file: 'go.mod'
 
       # The generated-hook tests skip shells that are not installed; the
-      # runner image lacks Fish.
-      - name: Install Fish
-        run: sudo apt-get update && sudo apt-get install -y fish
+      # runner image lacks Fish and Zsh.
+      - name: Install hook shells
+        run: sudo apt-get update && sudo apt-get install -y fish zsh
 
       - name: Check module hygiene
         run: go mod tidy -diff

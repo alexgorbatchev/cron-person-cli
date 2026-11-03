@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-03 16:30
+  last_modified: 2026-11-03 17:00
   status: current
 ---
 
@@ -17,7 +17,7 @@ metadata:
 
 Set `AGENT=1` for compact `key: value` output. Every path printed under the home directory is shown as `~`.
 
-Scheduling needs a cron daemon and the `crontab` command, available on Linux and macOS. Windows builds handle authorization, `exec`, `task run`, and run history only: `crontab sync` and `crontab uninstall` fail without a `crontab` executable, and tasks need `SHELL` naming a shell that accepts `-c`.
+Scheduling needs a cron daemon and the `crontab` command, available on Linux and macOS. On macOS, scheduled runs of a `.cronrc` in a protected location (`~/Desktop`, `~/Documents`, `~/Downloads`, iCloud Drive, external or network volumes) fail with `Operation not permitted` unless `/usr/sbin/cron` has Full Disk Access. Windows builds handle authorization, `exec`, `task run`, and run history only: `crontab sync` and `crontab uninstall` fail without a `crontab` executable, and tasks need `SHELL` naming a shell that accepts `-c`.
 
 ## `.cronrc` format
 

@@ -45,6 +45,7 @@
 - [cron](https://man7.org/linux/man-pages/man5/crontab.5.html) daemon with standard `crontab` CLI support, for scheduling (`crontab sync` and `crontab uninstall`).
 - A shell that accepts `-c` for tasks: `.cronrc` `SHELL`, then the inherited `SHELL`, then `/bin/sh`.
 - Bash, Zsh, or Fish for the optional prompt hook.
+- On macOS, Full Disk Access for `/usr/sbin/cron` (System Settings > Privacy & Security) when a `.cronrc` lives in a protected location such as `~/Desktop`, `~/Documents`, `~/Downloads`, iCloud Drive, or an external or network volume. Without it, scheduled runs fail with `Operation not permitted` and the only notice is cron mail; macOS upgrades can revoke the grant.
 
 # Platform Support
 
@@ -52,10 +53,10 @@ Release archives are published for every combination below. "Verified" means the
 
 | Target | Status | Scheduling | Verification |
 | :--- | :--- | :--- | :--- |
-| Linux amd64 | Supported | User crontab | CI on every push and pull request, including the Fish hook |
+| Linux amd64 | Supported | User crontab | CI on pushes to `main` and pull requests against it, including the Bash, Zsh, and Fish hooks |
 | Linux arm64 | Supported | User crontab | Verified manually in a container, including the Fish hook; not in CI |
-| macOS arm64 | Supported | User crontab (launchd starts cron) | Verified manually; not in CI |
-| macOS amd64 | Supported | User crontab (launchd starts cron) | Verified manually under Rosetta; not in CI |
+| macOS arm64 | Supported | User crontab (launchd starts cron); protected folders need Full Disk Access for cron | Verified manually from a terminal, which has its own privacy grants; not in CI |
+| macOS amd64 | Supported | User crontab (launchd starts cron); protected folders need Full Disk Access for cron | Verified manually under Rosetta from a terminal; not in CI |
 | Windows amd64, arm64 | Partial, unverified | None: no `crontab` executable, so `crontab sync` and `crontab uninstall` fail | Not verified: authorization, `exec`, `task run`, and run history are built for Windows, and tasks need `SHELL` naming a shell that accepts `-c` because `/bin/sh` does not exist |
 
 # Scheduler Compatibility
