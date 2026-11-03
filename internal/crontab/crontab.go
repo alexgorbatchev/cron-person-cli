@@ -236,19 +236,18 @@ func WriteSystemCrontab(content string) error {
 
 // Preview generates the managed block and counts eligible directories without installing it.
 func Preview(st *store.Store, binPath, configPath string) (string, int, error) {
-	records, err := st.List()
+	inspections, err := st.InspectAll()
 	if err != nil {
 		return "", 0, err
 	}
-	validRecords := make([]store.Record, 0, len(records))
+	validRecords := make([]store.Record, 0, len(inspections))
 
-	for _, rec := range records {
-		status, _, err := st.Status(rec.Dir)
-		if err != nil {
-			return "", 0, fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
+	for _, in := range inspections {
+		if in.Err != nil {
+			return "", 0, fmt.Errorf("checking authorization for %s: %w", in.Record.Dir, in.Err)
 		}
-		if status == store.StatusAllowed {
-			validRecords = append(validRecords, rec)
+		if in.Status == store.StatusAllowed {
+			validRecords = append(validRecords, in.Record)
 		}
 	}
 

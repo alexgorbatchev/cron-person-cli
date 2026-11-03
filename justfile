@@ -31,6 +31,10 @@ test-daemon:
 verify-release tag:
     GITHUB_TOKEN="${GITHUB_TOKEN:-$(gh auth token)}" go run ./scripts/verify-release {{ tag }}
 
+# Measure status, task list, crontab show, the prompt hook, and allow at 10, 100, and 1000 tracked directories
+bench:
+    go test -run '^$' -bench . -benchmem ./cmd/cron-person
+
 # Build binary into bin/
 build:
     mkdir -p bin

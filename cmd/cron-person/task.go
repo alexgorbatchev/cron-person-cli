@@ -38,7 +38,7 @@ func newTaskListCommand() *cobra.Command {
 				return err
 			}
 
-			records, err := st.List()
+			inspections, err := st.InspectAll()
 			if err != nil {
 				return err
 			}
@@ -53,8 +53,8 @@ func newTaskListCommand() *cobra.Command {
 			}
 
 			var tasks []taskItem
-			for _, rec := range records {
-				status, _, snapshot, err := st.Inspect(rec.Dir)
+			for _, in := range inspections {
+				rec, status, snapshot, err := in.Record, in.Status, in.Snapshot, in.Err
 				if err != nil {
 					return fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
 				}

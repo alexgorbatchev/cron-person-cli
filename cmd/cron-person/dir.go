@@ -115,15 +115,15 @@ func newDirListCommand() *cobra.Command {
 				return err
 			}
 
-			records, err := st.List()
+			inspections, err := st.InspectAll()
 			if err != nil {
 				return err
 			}
 
 			var out strings.Builder
 			if cobrahelptree.IsAgentMode() {
-				for _, rec := range records {
-					status, _, err := st.Status(rec.Dir)
+				for _, in := range inspections {
+					rec, status, err := in.Record, in.Status, in.Err
 					if err != nil {
 						return fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
 					}
@@ -132,13 +132,13 @@ func newDirListCommand() *cobra.Command {
 				return writeOutput(cmd, out.String())
 			}
 
-			if len(records) == 0 {
+			if len(inspections) == 0 {
 				return writeOutput(cmd, "No tracked directories. Use 'cron-person allow <path>' to authorize a directory.\n")
 			}
 
 			fmt.Fprintln(&out, "Tracked Directories:")
-			for _, rec := range records {
-				status, _, err := st.Status(rec.Dir)
+			for _, in := range inspections {
+				rec, status, err := in.Record, in.Status, in.Err
 				if err != nil {
 					return fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
 				}

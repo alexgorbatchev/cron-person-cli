@@ -357,10 +357,45 @@ func (s *Store) Inspect(dir string) (DirStatus, *Record, []byte, error) {
 	rec, hasRecord := s.records[absDir]
 	s.mu.Unlock()
 
+	if !hasRecord {
+		return classify(data, readErr, nil)
+	}
+	return classify(data, readErr, &rec)
+}
+
+// Inspection is one tracked directory as inspected now: its status, the
+// .cronrc snapshot the status was computed from, or why it could not be read.
+type Inspection struct {
+	Record   Record
+	Status   DirStatus
+	Snapshot []byte
+	Err      error
+}
+
+// InspectAll inspects every tracked directory in directory order against one
+// load of the store, where calling Inspect per directory would reload the
+// store each time.
+func (s *Store) InspectAll() ([]Inspection, error) {
+	records, err := s.List()
+	if err != nil {
+		return nil, err
+	}
+	inspections := make([]Inspection, 0, len(records))
+	for _, rec := range records {
+		data, readErr := cronrc.ReadFile(filepath.Join(rec.Dir, ".cronrc"))
+		status, _, snapshot, err := classify(data, readErr, &rec)
+		inspections = append(inspections, Inspection{Record: rec, Status: status, Snapshot: snapshot, Err: err})
+	}
+	return inspections, nil
+}
+
+// classify compares a .cronrc read against rec, which is nil for an
+// untracked directory.
+func classify(data []byte, readErr error, rec *Record) (DirStatus, *Record, []byte, error) {
 	switch {
 	case errors.Is(readErr, fs.ErrNotExist):
-		if hasRecord {
-			return StatusOrphan, &rec, nil, nil
+		if rec != nil {
+			return StatusOrphan, rec, nil, nil
 		}
 		return StatusMissingCronrc, nil, nil, nil
 	case errors.Is(readErr, cronrc.ErrNotRegular):
@@ -371,17 +406,14 @@ func (s *Store) Inspect(dir string) (DirStatus, *Record, []byte, error) {
 		return "", nil, nil, fmt.Errorf("checking .cronrc: %w", readErr)
 	}
 
-	currentHash := cronrc.ComputeHash(data)
-
-	if !hasRecord {
+	switch {
+	case rec == nil:
 		return StatusUnauthorized, nil, data, nil
+	case rec.Hash != cronrc.ComputeHash(data):
+		return StatusChanged, rec, data, nil
+	default:
+		return StatusAllowed, rec, data, nil
 	}
-
-	if rec.Hash != currentHash {
-		return StatusChanged, &rec, data, nil
-	}
-
-	return StatusAllowed, &rec, data, nil
 }
 
 // Prune removes records for directories that no longer exist or no longer have a .cronrc file.

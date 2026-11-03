@@ -123,15 +123,15 @@ func newRootStatusCommand() *cobra.Command {
 				return err
 			}
 
-			records, err := st.List()
+			inspections, err := st.InspectAll()
 			if err != nil {
 				return err
 			}
 			allowedCount := 0
 			totalTasks := 0
 
-			for _, rec := range records {
-				status, _, snapshot, err := st.Inspect(rec.Dir)
+			for _, in := range inspections {
+				rec, status, snapshot, err := in.Record, in.Status, in.Snapshot, in.Err
 				if err != nil {
 					return fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
 				}
@@ -155,7 +155,7 @@ func newRootStatusCommand() *cobra.Command {
 			var out strings.Builder
 			if cobrahelptree.IsAgentMode() {
 				fmt.Fprintln(&out, "version: "+version)
-				fmt.Fprintf(&out, "tracked_dirs: %d\n", len(records))
+				fmt.Fprintf(&out, "tracked_dirs: %d\n", len(inspections))
 				fmt.Fprintf(&out, "allowed_dirs: %d\n", allowedCount)
 				fmt.Fprintf(&out, "total_tasks: %d\n", totalTasks)
 				fmt.Fprintf(&out, "config: %s\n", display.Path(configPath))
@@ -172,7 +172,7 @@ func newRootStatusCommand() *cobra.Command {
 				fmt.Fprintln(&out, "[OK] cron-person system status: active")
 			}
 			fmt.Fprintf(&out, "  Version:              %s\n", version)
-			fmt.Fprintf(&out, "  Tracked Directories:  %d\n", len(records))
+			fmt.Fprintf(&out, "  Tracked Directories:  %d\n", len(inspections))
 			fmt.Fprintf(&out, "  Allowed Directories:  %d\n", allowedCount)
 			fmt.Fprintf(&out, "  Active Tasks:         %d\n", totalTasks)
 			fmt.Fprintf(&out, "  Configuration:        %s (%s)\n", display.Path(configPath), configState)
