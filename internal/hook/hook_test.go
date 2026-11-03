@@ -33,9 +33,13 @@ func TestHookExport_UnauthorizedAndChanged(t *testing.T) {
 	}
 
 	appDir := filepath.Join(tempDir, "app")
-	_ = os.MkdirAll(appDir, 0o755)
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
 	cronrcPath := filepath.Join(appDir, ".cronrc")
-	_ = os.WriteFile(cronrcPath, []byte("@hourly ./run.sh\n"), 0o644)
+	if err := os.WriteFile(cronrcPath, []byte("@hourly ./run.sh\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	// 1. Unauthorized
 	var stderr bytes.Buffer
@@ -48,7 +52,9 @@ func TestHookExport_UnauthorizedAndChanged(t *testing.T) {
 	}
 
 	// 2. Allow
-	_, _ = st.Allow(appDir)
+	if _, err := st.Allow(appDir); err != nil {
+		t.Fatal(err)
+	}
 	stderr.Reset()
 	err = HandleHookExport(st, appDir, false, &stderr)
 	if err != nil {
@@ -59,7 +65,9 @@ func TestHookExport_UnauthorizedAndChanged(t *testing.T) {
 	}
 
 	// 3. Modified
-	_ = os.WriteFile(cronrcPath, []byte("@daily ./run.sh\n"), 0o644)
+	if err := os.WriteFile(cronrcPath, []byte("@daily ./run.sh\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	stderr.Reset()
 	err = HandleHookExport(st, appDir, false, &stderr)
 	if err != nil {

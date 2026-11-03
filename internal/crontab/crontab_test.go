@@ -179,8 +179,10 @@ func TestRemoveAndMergeBlock_MalformedAndRepeatedBlocks(t *testing.T) {
 func TestGenerateBlock(t *testing.T) {
 	tempDir := t.TempDir()
 	appDir := filepath.Join(tempDir, "app")
-	_ = os.MkdirAll(appDir, 0o755)
-	_ = os.WriteFile(filepath.Join(appDir, ".cronrc"), []byte("0 * * * * ./task.sh\n@daily make sync\n"), 0o644)
+	if err := os.MkdirAll(appDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	writeCrontabFile(t, filepath.Join(appDir, ".cronrc"), "0 * * * * ./task.sh\n@daily make sync\n")
 
 	records := []store.Record{
 		{
@@ -386,7 +388,7 @@ func TestGenerateBlock_ExecutesSafelyAndBlocksUnauthorized(t *testing.T) {
 
 	for _, mode := range []string{"direct-sh", "cron-preprocessed"} {
 		t.Run(mode, func(t *testing.T) {
-			_ = os.Remove(markerPath)
+			removeMarker(t, markerPath)
 			shellCmd := cronCmd
 			stdinData := ""
 			if mode == "cron-preprocessed" {
@@ -421,7 +423,7 @@ func TestGenerateBlock_ExecutesSafelyAndBlocksUnauthorized(t *testing.T) {
 	}
 
 	t.Run("revoked", func(t *testing.T) {
-		_ = os.Remove(markerPath)
+		removeMarker(t, markerPath)
 		if err := st.Deny(projectDir); err != nil {
 			t.Fatal(err)
 		}
@@ -434,7 +436,7 @@ func TestGenerateBlock_ExecutesSafelyAndBlocksUnauthorized(t *testing.T) {
 	})
 
 	t.Run("tampered", func(t *testing.T) {
-		_ = os.Remove(markerPath)
+		removeMarker(t, markerPath)
 		if _, err := st.Allow(projectDir); err != nil {
 			t.Fatal(err)
 		}
@@ -519,5 +521,14 @@ func TestGenerateBlock_RejectsModifiedSnapshotAfterStatusCheck(t *testing.T) {
 	}
 	if strings.Contains(block, "unapproved-task") {
 		t.Fatalf("GenerateBlock emitted tasks from unapproved snapshot:\n%s", block)
+	}
+}
+
+// removeMarker clears a side-effect marker before a run; a marker that
+// cannot be removed would make the run's absence of side effects unprovable.
+func removeMarker(t *testing.T, path string) {
+	t.Helper()
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		t.Fatal(err)
 	}
 }

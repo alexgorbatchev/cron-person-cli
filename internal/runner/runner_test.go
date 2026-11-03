@@ -116,11 +116,17 @@ func TestRunner_Exec_HashChanged(t *testing.T) {
 	}
 
 	cronrcPath := filepath.Join(projectDir, ".cronrc")
-	_ = os.WriteFile(cronrcPath, []byte("@hourly echo 1"), 0o644)
-	_, _ = st.Allow(projectDir)
+	if err := os.WriteFile(cronrcPath, []byte("@hourly echo 1"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Allow(projectDir); err != nil {
+		t.Fatal(err)
+	}
 
 	// Modify without re-allow
-	_ = os.WriteFile(cronrcPath, []byte("@hourly echo 2"), 0o644)
+	if err := os.WriteFile(cronrcPath, []byte("@hourly echo 2"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	r := NewRunner(st)
 	var stdout, stderr bytes.Buffer

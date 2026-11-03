@@ -112,13 +112,18 @@ func TestStore_PersistenceAndPrune(t *testing.T) {
 
 	proj1 := filepath.Join(tempDir, "proj1")
 	proj2 := filepath.Join(tempDir, "proj2")
-	_ = os.MkdirAll(proj1, 0o755)
-	_ = os.MkdirAll(proj2, 0o755)
-	_ = os.WriteFile(filepath.Join(proj1, ".cronrc"), []byte("@hourly echo 1\n"), 0o644)
-	_ = os.WriteFile(filepath.Join(proj2, ".cronrc"), []byte("@daily echo 2\n"), 0o644)
-
-	_, _ = st.Allow(proj1)
-	_, _ = st.Allow(proj2)
+	for _, proj := range []string{proj1, proj2} {
+		if err := os.MkdirAll(proj, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	writeStoreFile(t, filepath.Join(proj1, ".cronrc"), "@hourly echo 1\n")
+	writeStoreFile(t, filepath.Join(proj2, ".cronrc"), "@daily echo 2\n")
+	for _, proj := range []string{proj1, proj2} {
+		if _, err := st.Allow(proj); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	// Re-load store from disk
 	st2, err := NewStore(storePath)
@@ -130,7 +135,9 @@ func TestStore_PersistenceAndPrune(t *testing.T) {
 	}
 
 	// Delete proj2
-	_ = os.RemoveAll(proj2)
+	if err := os.RemoveAll(proj2); err != nil {
+		t.Fatal(err)
+	}
 
 	pruned, err := st2.Prune()
 	if err != nil {
