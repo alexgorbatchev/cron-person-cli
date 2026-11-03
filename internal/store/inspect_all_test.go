@@ -58,6 +58,19 @@ func TestInspectAllReportsEveryTrackedDirectory(t *testing.T) {
 		t.Fatalf("want all four directories in directory order, got %d", len(inspections))
 	}
 
+	// A key that is not the canonical absolute path never matches when a task
+	// runs, so it must not look authorized here either.
+	project := projects["allowed"]
+	edited := `[{"dir":"` + project + `/","path":"` + filepath.Join(project, ".cronrc") + `","hash":"` + got["allowed"].Record.Hash + `"}]`
+	writeStoreFile(t, path, edited)
+	inspections, err = st.InspectAll()
+	if err != nil || len(inspections) != 1 || inspections[0].Status != StatusUnauthorized {
+		t.Fatalf("non-canonical record: %+v, %v; want unauthorized", inspections, err)
+	}
+	if status, _, err := st.Status(project + "/"); err != nil || status != inspections[0].Status {
+		t.Fatalf("Status disagrees with InspectAll: %s, %v", status, err)
+	}
+
 	writeStoreFile(t, path, "{")
 	if _, err := st.InspectAll(); err == nil {
 		t.Fatal("corrupt store accepted")

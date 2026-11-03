@@ -19,6 +19,8 @@ var capacityDirs = []int{10, 100, 1000}
 // and one of the directories.
 func trackedStore(b *testing.B, n int) (state, project string) {
 	b.Helper()
+	// Measure the human output whatever the caller's environment says.
+	b.Setenv("AGENT", "0")
 	root := b.TempDir()
 	state = filepath.Join(root, "state", "allowed.json")
 	st, err := store.NewStore(state)

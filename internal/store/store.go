@@ -380,11 +380,29 @@ func (s *Store) InspectAll() ([]Inspection, error) {
 	if err != nil {
 		return nil, err
 	}
+	byDir := make(map[string]Record, len(records))
+	for _, rec := range records {
+		byDir[rec.Dir] = rec
+	}
 	inspections := make([]Inspection, 0, len(records))
 	for _, rec := range records {
-		data, readErr := cronrc.ReadFile(filepath.Join(rec.Dir, ".cronrc"))
-		status, _, snapshot, err := classify(data, readErr, &rec)
-		inspections = append(inspections, Inspection{Record: rec, Status: status, Snapshot: snapshot, Err: err})
+		in := Inspection{Record: rec}
+		// Look the directory up as Inspect does, so a hand-edited key that is
+		// not the canonical absolute path stays as unauthorized as it is when
+		// a task runs.
+		absDir, err := filepath.Abs(rec.Dir)
+		if err != nil {
+			in.Err = fmt.Errorf("resolving path: %w", err)
+			inspections = append(inspections, in)
+			continue
+		}
+		data, readErr := cronrc.ReadFile(filepath.Join(absDir, ".cronrc"))
+		if canonical, ok := byDir[absDir]; ok {
+			in.Status, _, in.Snapshot, in.Err = classify(data, readErr, &canonical)
+		} else {
+			in.Status, _, in.Snapshot, in.Err = classify(data, readErr, nil)
+		}
+		inspections = append(inspections, in)
 	}
 	return inspections, nil
 }

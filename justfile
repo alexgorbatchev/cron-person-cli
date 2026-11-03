@@ -33,7 +33,7 @@ verify-release tag:
 
 # Measure status, task list, crontab show, the prompt hook, and allow at 10, 100, and 1000 tracked directories
 bench:
-    go test -run '^$' -bench . -benchmem ./cmd/cron-person
+    go test -run '^$' -bench . -benchmem -benchtime 5x ./cmd/cron-person
 
 # Build binary into bin/
 build:
