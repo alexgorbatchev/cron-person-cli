@@ -24,7 +24,7 @@
 
 # How it Really Works
 
-- **State Persistence**: Records authorized directory paths, `.cronrc` locations, SHA-256 hashes, and approval timestamps in `$XDG_STATE_HOME/cron-person/allowed.json` (fallback `~/.local/state/cron-person/allowed.json`).
+- **State Persistence**: Records authorized directory paths, `.cronrc` locations, SHA-256 hashes, and approval timestamps in `$XDG_STATE_HOME/cron-person/allowed.json` (fallback `~/.local/state/cron-person/allowed.json`). Each change is written to a staged file in the same directory, flushed to disk, renamed over the store, and the directory flushed, so once `allow` or `deny` succeeds the change survives a crash or power loss (on Windows, the rename's durability is left to the file system). An interrupted change leaves the previous store intact; staged files it abandoned (`allowed.json.<digits>.tmp`) are never read and are removed by the next change.
 - **Security Check Before Run**: Before executing any command via `cron-person exec`, calculates the current SHA-256 hash of `.cronrc` and compares it against the state store. If the directory is unauthorized or the hash differs, execution aborts with exit code `1`.
 - **Exit Codes**: `cron-person exec` and `cron-person task run` exit with the task's own exit code, or `128+N` when the task is killed by signal `N`, so cron mail and wrapper scripts see the real result. Every other failure exits `1`.
 - **System Crontab Splicing**: Reads user crontab via `crontab -l`, isolates the section between `# >>> cron-person managed block (DO NOT EDIT DIRECTLY) >>>` and `# <<< cron-person managed block <<<`, replaces only that section with compiled entries, and updates the crontab via `crontab -`.

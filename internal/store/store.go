@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -154,14 +155,16 @@ func (s *Store) saveRecordsLocked(records map[string]Record) error {
 		return fmt.Errorf("marshaling store data: %w", err)
 	}
 
-	tmpFile, err := os.CreateTemp(filepath.Dir(s.filePath), filepath.Base(s.filePath)+".*.tmp")
+	s.removeStaleTempFilesLocked()
+	tmpFile, err := os.CreateTemp(filepath.Dir(s.filePath), filepath.Base(s.filePath)+tempFileSuffix)
 	if err != nil {
 		return fmt.Errorf("writing store temp file: %w", err)
 	}
 	tmpPath := tmpFile.Name()
 	_, writeErr := tmpFile.Write(data)
+	syncErr := tmpFile.Sync()
 	closeErr := tmpFile.Close()
-	if err := errors.Join(writeErr, closeErr); err != nil {
+	if err := errors.Join(writeErr, syncErr, closeErr); err != nil {
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("writing store temp file: %w", err)
 	}
@@ -170,8 +173,43 @@ func (s *Store) saveRecordsLocked(records map[string]Record) error {
 		_ = os.Remove(tmpPath)
 		return fmt.Errorf("committing store file: %w", err)
 	}
+	// The rename is visible from here on, so memory follows disk even when
+	// flushing the directory entry fails.
 	s.records = records
+	if err := syncDir(filepath.Dir(s.filePath)); err != nil {
+		return fmt.Errorf("flushing store directory: %w", err)
+	}
 	return nil
+}
+
+// tempFileSuffix is the os.CreateTemp pattern for staged store writes; the
+// random part is a decimal number.
+const tempFileSuffix = ".*.tmp"
+
+// removeStaleTempFilesLocked deletes staged writes left by writers that died
+// before renaming them. Writers stage files only while holding the store
+// lock, so under the lock every staged file is abandoned. Removal is best
+// effort: a leftover file is never read, and failing to delete one must not
+// block an authorization change.
+func (s *Store) removeStaleTempFilesLocked() {
+	dir := filepath.Dir(s.filePath)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return
+	}
+	prefix := filepath.Base(s.filePath) + "."
+	for _, entry := range entries {
+		name := entry.Name()
+		random, ok := strings.CutPrefix(name, prefix)
+		if !ok {
+			continue
+		}
+		random, ok = strings.CutSuffix(random, ".tmp")
+		if !ok || random == "" || strings.Trim(random, "0123456789") != "" {
+			continue
+		}
+		_ = os.Remove(filepath.Join(dir, name))
+	}
 }
 
 // Allow registers or updates authorization for the .cronrc in dir.
