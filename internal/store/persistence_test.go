@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -208,6 +209,9 @@ func TestStoreInvalidCronrcAndPruneFailure(t *testing.T) {
 }
 
 func TestStoreUnavailableWorkingDirectory(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("darwin resolves a removed working directory to its former path, so this failure cannot be induced")
+	}
 	dir := t.TempDir()
 	st, err := NewStore(filepath.Join(dir, "state.json"))
 	if err != nil {

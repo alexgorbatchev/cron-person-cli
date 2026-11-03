@@ -76,8 +76,13 @@ func TestBootstrap(t *testing.T) {
 				}
 				return
 			}
-			if err != nil || got != payload {
-				t.Fatalf("installed=%q err=%v", got, err)
+			// The installed path is reported with symlinks resolved.
+			want, evalErr := filepath.EvalSymlinks(payload)
+			if evalErr != nil {
+				t.Fatal(evalErr)
+			}
+			if err != nil || got != want {
+				t.Fatalf("installed=%q err=%v, want %q", got, err, want)
 			}
 			data, err := os.ReadFile(payload)
 			if err != nil || string(data) != "new" {

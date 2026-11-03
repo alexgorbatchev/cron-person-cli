@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -38,6 +39,9 @@ func TestCLIDefaultStoreResolutionFailure(t *testing.T) {
 }
 
 func TestCLIUnavailableWorkingDirectory(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("darwin resolves a removed working directory to its former path, so this failure cannot be induced")
+	}
 	for _, args := range [][]string{
 		{"allow"}, {"deny"}, {"dir", "check"}, {"dir", "status"},
 		{"allow", "relative"}, {"task", "run", "relative", "true"},
