@@ -48,15 +48,15 @@
 
 `cron-person crontab sync` installs plain five-field or `@descriptor` entries into the user crontab through `crontab -`, and the cron daemon decides when they fire. Supported daemons are the Vixie cron family that reads per-user crontabs installed by `crontab(1)`:
 
-| Daemon | Typical platforms | Schedule time zone | Clock and DST changes |
-| :--- | :--- | :--- | :--- |
-| [cronie](https://man7.org/linux/man-pages/man5/crontab.5.html) | Fedora, RHEL, Arch | Daemon local time; `CRON_TZ` in the user crontab changes it | Entries in a skipped hour do not run; entries in a repeated hour run twice |
-| [Debian cron](https://manpages.debian.org/bookworm/cron/cron.8.en.html) | Debian, Ubuntu | System time zone (`/etc/timezone`), one zone for all jobs | Jobs skipped by a forward change of less than 3 hours run soon after it; repeated time does not rerun them |
-| macOS cron | macOS | System local time | Not verified here; see `man 8 cron` on the machine |
+| Daemon | Typical platforms | Schedule time zone | Clock and DST changes | Crontab settings it honors |
+| :--- | :--- | :--- | :--- | :--- |
+| cronie ([cron(8)](https://man7.org/linux/man-pages/man8/cron.8.html), [crontab(5)](https://man7.org/linux/man-pages/man5/crontab.5.html)) | Fedora, RHEL, Arch | Daemon local time, or `CRON_TZ` | Changes under 3 hours: jobs at a specific time or less often than hourly that fall in a skipped interval run immediately, and are not run twice when time goes back; more frequent jobs follow the clock. Larger changes take effect immediately | `SHELL`, `HOME`, `MAILTO`, `MAILFROM`, `CRON_TZ` |
+| Debian cron ([cron(8)](https://manpages.debian.org/bookworm/cron/cron.8.en.html), [crontab(5)](https://manpages.debian.org/bookworm/cron/crontab.5.en.html)) | Debian, Ubuntu | System time zone (`/etc/timezone`), one zone for all jobs | Changes under 3 hours: jobs at a particular time (no `*` in the minute or hour field, not `@hourly`) skipped by a forward change run soon after it and are not rerun when time goes back; wildcard jobs follow the new time immediately. Larger changes take effect immediately | `SHELL`, `HOME`, `MAILTO` |
+| macOS cron (`man 8 cron`, `man 5 crontab`) | macOS | System local time | launchd starts `/usr/sbin/cron` without `-s`, so there is no special handling: entries in a skipped interval do not run and entries in a repeated interval run twice | `SHELL`, `HOME`, `MAILTO` |
 
 Generated entries assume a POSIX shell, which is cron's default `SHELL`.
 
-**Scheduler controls versus task environment**: `NAME=value` lines in `.cronrc` reach only the task, through `cron-person exec`; they are never written into the user crontab, so cron itself never sees them. `MAILTO`, `MAILFROM`, `CRON_TZ`, and cron's own `SHELL` and `HOME` therefore have no scheduling effect when set in `.cronrc`. To change them for cron-person entries, set them in the user crontab above the managed block, where cron applies them to every entry that follows. Inside a task, variables resolve in this order, later winning: the environment cron provides, `.cronrc` assignments, then `PWD`, `CRON_PERSON_DIR`, and `CRON_PERSON_CRONRC`.
+**Scheduler controls versus task environment**: `NAME=value` lines in `.cronrc` reach only the task, through `cron-person exec`; they are never written into the user crontab, so cron itself never sees them. Cron's own settings therefore have no scheduling effect when set in `.cronrc`. To apply one to cron-person entries, set it in the user crontab above the managed block, where cron applies it to every entry that follows, and only if the daemon honors it (see the last column; `CRON_TZ` and `MAILFROM` do nothing outside cronie). A `SHELL` set there must be POSIX-compatible, because cron runs every generated entry through it and it becomes the task shell for `.cronrc` files that set no `SHELL`. Inside a task, variables resolve in this order, later winning: the environment cron provides, `.cronrc` assignments, then `PWD`, `CRON_PERSON_DIR`, and `CRON_PERSON_CRONRC`.
 
 # Installation
 
