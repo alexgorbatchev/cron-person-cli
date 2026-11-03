@@ -15,6 +15,7 @@ Higher-order per-directory crontab manager with direnv-style shell integration
 - **Run CLI in Agent Mode:** `just run-ai [args...]` (`AGENT=1 ./bin/cron-person`)
 - **Run Tests:** `just test` (`go test -v ./...`)
 - **Run Cron Daemon Integration Test:** `just test-daemon` installs generated entries into a real Debian cron inside a disposable testcontainers container and waits for real fires (about 5 minutes, needs Docker; `DOCKER_HOST` defaults to the current Docker context). It sits behind the `daemon` build tag, so `just test` stays hermetic.
+- **Verify a Published Release:** `just verify-release <tag>` reads the tag's release workflow run, assets, `checksums.txt`, and each binary's embedded version from GitHub without changing anything; run it after every release.
 - **Run Static Analysis & Tests:** `just check` (`go vet ./... && go test -v ./...`)
 - **Run Linter / Static Analysis:** `just vet` or `just lint` (`go vet ./...`)
 - **Format Source Code:** `just fmt` (`go fmt ./...`)

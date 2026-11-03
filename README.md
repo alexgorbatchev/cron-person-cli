@@ -78,9 +78,12 @@ Generated entries assume a POSIX shell, which is cron's default `SHELL`.
 Download the prebuilt binary for your platform from the [latest release](https://github.com/alexgorbatchev/cron-person-cli/releases/latest).
 
 ```bash
-# macOS (Apple Silicon)
-curl -fsSL https://github.com/alexgorbatchev/cron-person-cli/releases/latest/download/cron-person_0.0.1_darwin_arm64.tar.gz | tar -xz -C ~/.local/bin
+# macOS (Apple Silicon); replace darwin_arm64 with your OS and architecture,
+# for example linux_amd64. Windows archives are .zip files.
+curl -fsSL https://github.com/alexgorbatchev/cron-person-cli/releases/latest/download/cron-person_darwin_arm64.tar.gz | tar -xz -C ~/.local/bin cron-person
 ```
+
+Every release also carries versioned archives (`cron-person_<version>_<os>_<arch>.tar.gz`) and `checksums.txt` with their SHA-256 sums. After upgrading the binary, run `cron-person crontab sync` so scheduled entries use it.
 
 # Quick Start
 
@@ -249,6 +252,17 @@ Run `cron-person crontab sync` after moving the configuration file so scheduled 
 
 - `just test` runs the unit tests. They are hermetic: crontab access goes through a file-backed fake `crontab` in `testdata/`, and no test reads or changes your crontab.
 - `just test-daemon` is the opt-in integration check. It cross-compiles cron-person, installs its generated entries into a real Debian cron inside a disposable container, and waits for actual fires to verify the working directory, `.cronrc` environment, literal percent signs, refusal of changed and revoked directories, in-place binary upgrades, re-syncing after moving the binary, and uninstall. It needs Docker and takes about five minutes.
+
+## Release Acceptance
+
+Pushing a `v*` tag runs `.github/workflows/release.yml`: a `verify` job (module hygiene, build, vet, tests), then GoReleaser in a `release` job that only starts once `verify` succeeds. After it finishes, run `just verify-release <tag>`, which only reads from GitHub. It checks that:
+
+- the tag's newest release run succeeded, and its `release` job started after `verify` completed;
+- the release is not a draft and holds exactly the versioned and unversioned archives `.goreleaser.yml` describes, plus `checksums.txt`;
+- every archive matches its SHA-256 in `checksums.txt`;
+- every archive contains the binary built for its OS and architecture with the release version, read from Go build information without running it; the binary for the current machine must also print that version for `--version`.
+
+It reports each passed check and exits nonzero with every failure. `GITHUB_TOKEN` (taken from `gh auth token` by the recipe) avoids API rate limits.
 
 # Name Rationale
 

@@ -27,6 +27,10 @@ test-daemon:
     fi
     go test -tags daemon -count=1 -v -timeout 20m -run TestDaemonRunsGeneratedEntries ./cmd/cron-person
 
+# Check a published release's workflow, assets, checksums, and binary versions without changing anything
+verify-release tag:
+    GITHUB_TOKEN="${GITHUB_TOKEN:-$(gh auth token)}" go run ./scripts/verify-release {{ tag }}
+
 # Build binary into bin/
 build:
     mkdir -p bin
