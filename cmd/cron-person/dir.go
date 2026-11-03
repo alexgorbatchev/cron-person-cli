@@ -168,7 +168,7 @@ func newDirCheckCommand() *cobra.Command {
 			cronrcPath := filepath.Join(dir, ".cronrc")
 			parsed, err := cronrc.ParseFile(cronrcPath)
 			if err != nil {
-				return fmt.Errorf("invalid .cronrc syntax: %w", err)
+				return fmt.Errorf("invalid .cronrc: %w", err)
 			}
 
 			if cobrahelptree.IsAgentMode() {

@@ -2,7 +2,9 @@ package crontab
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -58,9 +60,10 @@ func GenerateBlock(records []store.Record, inv Invocation) (string, error) {
 		if strings.TrimSpace(rec.Dir) == "" || strings.ContainsAny(rec.Dir, "\r\n\x00") {
 			return "", fmt.Errorf("directory path must not be empty or contain line breaks or NUL")
 		}
-		data, err := os.ReadFile(rec.Path)
-		if os.IsNotExist(err) {
-			// A removed configuration is no longer eligible for scheduling.
+		data, err := cronrc.ReadFile(rec.Path)
+		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, cronrc.ErrNotRegular) {
+			// A removed or replaced configuration is no longer eligible for
+			// scheduling.
 			continue
 		}
 		if err != nil {

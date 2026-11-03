@@ -4,6 +4,7 @@ package cronrc
 
 import (
 	"errors"
+	"net"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -41,5 +42,23 @@ func TestSpecialFilesAreRejectedWithoutBlocking(t *testing.T) {
 	}
 	if found, err := FindCronrc(nested); err != nil || found != ancestor {
 		t.Fatalf("FindCronrc = %q, %v; want the regular ancestor %q past the FIFO", found, err, ancestor)
+	}
+}
+
+func TestSocketIsNotRegular(t *testing.T) {
+	// Unix socket paths are short, so bind under a short temporary directory.
+	dir, err := os.MkdirTemp("", "sock")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	path := filepath.Join(dir, ".cronrc")
+	l, err := net.Listen("unix", path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = l.Close() })
+	if _, err := ReadFile(path); !errors.Is(err, ErrNotRegular) {
+		t.Fatalf("socket: %v, want ErrNotRegular", err)
 	}
 }

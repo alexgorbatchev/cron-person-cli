@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 )
 
 // MaxSize bounds how much of a .cronrc is read, so an oversized file cannot
@@ -25,6 +26,10 @@ var (
 func ReadFile(path string) ([]byte, error) {
 	f, err := openNonBlocking(path)
 	if err != nil {
+		// Some special files, such as sockets, cannot be opened at all.
+		if info, statErr := os.Stat(path); statErr == nil && !info.Mode().IsRegular() {
+			return nil, ErrNotRegular
+		}
 		return nil, err
 	}
 	defer f.Close() // Read-only; nothing to flush.

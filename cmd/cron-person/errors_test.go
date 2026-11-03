@@ -69,7 +69,7 @@ func TestCLIUnavailableWorkingDirectory(t *testing.T) {
 func TestCLIDirectoryFailures(t *testing.T) {
 	for _, tt := range []struct{ name, verb, want string }{
 		{"invalid schedule", "allow", "allowing directory"},
-		{"invalid syntax", "check", "invalid .cronrc syntax"},
+		{"invalid syntax", "check", "invalid .cronrc: line"},
 		{"allow persistence", "allow", "writing store temp file"},
 		{"deny persistence", "deny", "denying directory"},
 		{"status filesystem", "status", "checking .cronrc"},
