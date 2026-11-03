@@ -192,6 +192,11 @@ func defaultWriter(w, fallback io.Writer) io.Writer {
 	return fallback
 }
 
+// authorized runs right after authorization is checked. Tests replace it to
+// change the .cronrc at that moment and prove the task uses the snapshot that
+// was checked rather than a later read.
+var authorized = func() {}
+
 // prepare validates authorization and builds the command from the validated
 // .cronrc snapshot.
 func (r *Runner) prepare(ctx context.Context, absDir string, opts ExecOptions) (*exec.Cmd, error) {
@@ -200,6 +205,7 @@ func (r *Runner) prepare(ctx context.Context, absDir string, opts ExecOptions) (
 	if err != nil {
 		return nil, fmt.Errorf("checking authorization for %s: %w", absDir, err)
 	}
+	authorized()
 
 	switch dirStatus {
 	case store.StatusAllowed:

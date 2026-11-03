@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"sort"
@@ -346,8 +347,7 @@ func (s *Store) Inspect(dir string) (DirStatus, *Record, []byte, error) {
 		return "", nil, nil, fmt.Errorf("resolving path: %w", err)
 	}
 
-	cronrcPath := filepath.Join(absDir, ".cronrc")
-	fileInfo, statErr := os.Stat(cronrcPath)
+	data, readErr := cronrc.ReadFile(filepath.Join(absDir, ".cronrc"))
 
 	s.mu.Lock()
 	if err := s.reloadLocked(); err != nil {
@@ -357,23 +357,18 @@ func (s *Store) Inspect(dir string) (DirStatus, *Record, []byte, error) {
 	rec, hasRecord := s.records[absDir]
 	s.mu.Unlock()
 
-	if statErr != nil {
-		if os.IsNotExist(statErr) {
-			if hasRecord {
-				return StatusOrphan, &rec, nil, nil
-			}
-			return StatusMissingCronrc, nil, nil, nil
+	switch {
+	case errors.Is(readErr, fs.ErrNotExist):
+		if hasRecord {
+			return StatusOrphan, &rec, nil, nil
 		}
-		return "", nil, nil, fmt.Errorf("checking .cronrc: %w", statErr)
-	}
-
-	if fileInfo.IsDir() {
 		return StatusMissingCronrc, nil, nil, nil
-	}
-
-	data, err := os.ReadFile(cronrcPath)
-	if err != nil {
-		return "", nil, nil, fmt.Errorf("reading .cronrc: %w", err)
+	case errors.Is(readErr, cronrc.ErrNotRegular):
+		// Only a regular file can be authorized, so anything else counts as
+		// no .cronrc at all.
+		return StatusMissingCronrc, nil, nil, nil
+	case readErr != nil:
+		return "", nil, nil, fmt.Errorf("checking .cronrc: %w", readErr)
 	}
 
 	currentHash := cronrc.ComputeHash(data)

@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-03 17:00
+  last_modified: 2026-11-03 19:10
   status: current
 ---
 
@@ -22,6 +22,8 @@ Scheduling needs a cron daemon and the `crontab` command, available on Linux and
 ## `.cronrc` format
 
 A `.cronrc` uses crontab syntax: `NAME=value` lines define environment variables for every task, and schedule lines (`*/5 * * * * ./script.sh`, `@hourly make sync`) define tasks. Each task runs with its working directory set to the folder containing `.cronrc`, through `$SHELL -c` (the `.cronrc` `SHELL` wins, then the inherited `SHELL`, then `/bin/sh`). Tasks also receive `CRON_PERSON_DIR` (the directory) and `CRON_PERSON_CRONRC` (the `.cronrc` path), and `PWD` names the task directory rather than the directory `cron-person` was started from. `.cronrc` variables reach only the task and are never written to the user crontab, so cron's own settings have no scheduling effect there. To apply one to cron-person entries, set it in the user crontab above the managed block, and only where the daemon honors it: `SHELL`, `HOME`, and `MAILTO` on cronie, Debian cron, and macOS cron; `MAILFROM` and `CRON_TZ` on cronie only. A `SHELL` set there must be POSIX-compatible, since cron runs generated entries through it and it becomes the task shell for a `.cronrc` without `SHELL`. Schedules fire in the daemon's time zone. Daylight saving handling follows the daemon: cronie and Debian cron catch up fixed-time jobs skipped by a forward change of less than 3 hours and never rerun them on a backward change, while frequent (cronie) or wildcard (Debian) jobs follow the clock; macOS cron, as launchd starts it, skips entries in a skipped interval and runs entries in a repeated interval twice.
+
+A `.cronrc` must be a regular file (symlinks are followed) of at most 1 MiB. Other file types named `.cronrc` (directory, FIFO, device) count as no `.cronrc`, and larger files are rejected.
 
 ## Workflows
 

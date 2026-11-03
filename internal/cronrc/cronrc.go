@@ -215,7 +215,7 @@ func parseCronLine(line string, lineNum int, raw string) (*Task, error) {
 
 // ParseFile reads and parses a .cronrc file from disk.
 func ParseFile(path string) (*File, error) {
-	data, err := os.ReadFile(path)
+	data, err := ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("reading cronrc file %s: %w", path, err)
 	}
@@ -228,7 +228,8 @@ func ParseFile(path string) (*File, error) {
 	return file, nil
 }
 
-// FindCronrc walks up from the starting directory to find the nearest .cronrc file.
+// FindCronrc walks up from the starting directory to find the nearest .cronrc
+// that is a regular file; other file types are passed over like a missing one.
 // Returns empty string and nil if no .cronrc is found before the root.
 func FindCronrc(startDir string) (string, error) {
 	curr, err := filepath.Abs(startDir)
@@ -238,7 +239,7 @@ func FindCronrc(startDir string) (string, error) {
 
 	for {
 		candidate := filepath.Join(curr, ".cronrc")
-		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+		if info, err := os.Stat(candidate); err == nil && info.Mode().IsRegular() {
 			return candidate, nil
 		}
 
