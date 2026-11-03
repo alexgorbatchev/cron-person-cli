@@ -17,6 +17,8 @@ import (
 // The prompt hook runs on every prompt, so a FIFO named .cronrc must never
 // make it wait.
 func TestHookExportIgnoresSpecialCronrcWithoutBlocking(t *testing.T) {
+	// Warnings abbreviate paths under HOME; a separate HOME keeps them absolute.
+	t.Setenv("HOME", t.TempDir())
 	dir := t.TempDir()
 	st, err := store.NewStore(filepath.Join(dir, "allowed.json"))
 	if err != nil {
