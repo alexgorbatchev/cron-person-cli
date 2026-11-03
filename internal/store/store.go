@@ -93,7 +93,7 @@ func (s *Store) load() error {
 }
 
 func (s *Store) withFileLock(fn func() error) error {
-	if err := os.MkdirAll(filepath.Dir(s.filePath), 0o755); err != nil {
+	if err := createDirDurably(filepath.Dir(s.filePath)); err != nil {
 		return fmt.Errorf("creating state directory: %w", err)
 	}
 
@@ -178,6 +178,35 @@ func (s *Store) saveRecordsLocked(records map[string]Record) error {
 	s.records = records
 	if err := syncDir(filepath.Dir(s.filePath)); err != nil {
 		return fmt.Errorf("flushing store directory: %w", err)
+	}
+	return nil
+}
+
+// createDirDurably creates dir and its missing parents and flushes each new
+// entry into its parent, so a first change's store survives power loss along
+// with the directories that hold it.
+func createDirDurably(dir string) error {
+	var missing []string
+	for d := dir; ; d = filepath.Dir(d) {
+		_, err := os.Stat(d)
+		if err == nil {
+			break
+		}
+		if !os.IsNotExist(err) {
+			return err
+		}
+		missing = append(missing, d)
+		if filepath.Dir(d) == d {
+			break
+		}
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	for _, d := range missing {
+		if err := syncDir(filepath.Dir(d)); err != nil {
+			return err
+		}
 	}
 	return nil
 }

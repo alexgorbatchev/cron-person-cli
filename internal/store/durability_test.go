@@ -1,6 +1,8 @@
 package store
 
 import (
+	"bufio"
+	"fmt"
 	"math/rand/v2"
 	"os"
 	"os/exec"
@@ -82,19 +84,40 @@ func TestStoreSurvivesKilledWriters(t *testing.T) {
 	for round := range 15 {
 		writer := exec.Command(exe, "-test.run=^TestHelperStoreWriter$")
 		writer.Env = append(os.Environ(), "STORE_WRITER_HELPER=1", "STORE_WRITER_PATH="+path, "STORE_WRITER_PROJECT="+project)
+		stdout, err := writer.StdoutPipe()
+		if err != nil {
+			t.Fatal(err)
+		}
 		if err := writer.Start(); err != nil {
 			t.Fatal(err)
 		}
-		time.Sleep(time.Duration(5+rand.IntN(40)) * time.Millisecond)
+		// Start the random delay only once the writer is changing the store,
+		// so a slow start cannot turn the round into a no-op.
+		ready := make(chan error, 1)
+		go func() {
+			line, err := bufio.NewReader(stdout).ReadString('\n')
+			if err == nil && line != writerReady+"\n" {
+				err = fmt.Errorf("unexpected writer output %q", line)
+			}
+			ready <- err
+		}()
+		select {
+		case err := <-ready:
+			if err != nil {
+				_ = writer.Process.Kill()
+				t.Fatalf("round %d: writer never committed a change: %v", round, err)
+			}
+		case <-time.After(10 * time.Second):
+			_ = writer.Process.Kill()
+			t.Fatalf("round %d: writer never committed a change", round)
+		}
+		time.Sleep(time.Duration(1+rand.IntN(20)) * time.Millisecond)
 		if err := writer.Process.Kill(); err != nil {
 			t.Fatal(err)
 		}
 		_ = writer.Wait() // Killed on purpose.
 
 		st, err := NewStore(path)
-		if os.IsNotExist(err) {
-			continue
-		}
 		if err != nil {
 			t.Fatalf("round %d: store unreadable after killed writer: %v", round, err)
 		}
@@ -103,6 +126,9 @@ func TestStoreSurvivesKilledWriters(t *testing.T) {
 		}
 	}
 }
+
+// writerReady tells the parent the helper has committed its first change.
+const writerReady = "committed"
 
 func TestHelperStoreWriter(t *testing.T) {
 	if os.Getenv("STORE_WRITER_HELPER") != "1" {
@@ -113,6 +139,10 @@ func TestHelperStoreWriter(t *testing.T) {
 		t.Fatal(err)
 	}
 	project := os.Getenv("STORE_WRITER_PROJECT")
+	if _, err := st.Allow(project); err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println(writerReady)
 	for deadline := time.Now().Add(30 * time.Second); time.Now().Before(deadline); {
 		if _, err := st.Allow(project); err != nil {
 			t.Fatal(err)
@@ -120,6 +150,35 @@ func TestHelperStoreWriter(t *testing.T) {
 		if err := st.Deny(project); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestStoreRemovesFilesStagedByCreateTemp(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "allowed.json")
+	project := filepath.Join(dir, "project")
+	if err := os.Mkdir(project, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeStoreFile(t, filepath.Join(project, ".cronrc"), "@daily true\n")
+	// Stage exactly as a save does, so the cleanup tracks the names os.CreateTemp
+	// really produces rather than an assumed format.
+	abandoned, err := os.CreateTemp(dir, filepath.Base(path)+tempFileSuffix)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := abandoned.Close(); err != nil {
+		t.Fatal(err)
+	}
+	st, err := NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Allow(project); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(abandoned.Name()); !os.IsNotExist(err) {
+		t.Fatalf("file staged by os.CreateTemp survived the next change: %v", err)
 	}
 }
 
