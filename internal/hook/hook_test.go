@@ -166,7 +166,9 @@ func TestGeneratedHookScriptsDeliverWarnings(t *testing.T) {
 				cmdArgs := append(append([]string{}, tc.args...), hookScript+"\n"+tc.call)
 				cmd := exec.Command(shellBin, cmdArgs...)
 				cmd.Dir = nestedDir
+				// An interactive shell's PWD names its current directory.
 				cmd.Env = append(os.Environ(),
+					"PWD="+nestedDir,
 					"GO_WANT_HOOK_EXPORT_HELPER=1",
 					"TEST_HOOK_STORE="+statePath,
 					"AGENT=0",

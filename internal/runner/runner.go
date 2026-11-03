@@ -249,6 +249,10 @@ func (r *Runner) prepare(ctx context.Context, absDir string, opts ExecOptions) (
 		envMap[k] = v
 	}
 
+	// cmd.Env replaces os/exec's own PWD handling, and the inherited PWD names
+	// the directory cron-person was started from, not the task's.
+	envMap["PWD"] = absDir
+
 	// Injected CRON_PERSON helper environment variables
 	envMap["CRON_PERSON_DIR"] = absDir
 	envMap["CRON_PERSON_CRONRC"] = cronrcPath

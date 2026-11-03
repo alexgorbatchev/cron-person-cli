@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -148,7 +149,31 @@ func TestRunnerMissingAndUnusableCronrc(t *testing.T) {
 	}
 }
 
+func TestRunnerSetsPWDToTheTaskDirectory(t *testing.T) {
+	st, dir := runnerProject(t, "SHELL=/bin/sh\n@daily true\n")
+	// A symlinked path differs from the physical one, so a shell that inherits
+	// a PWD naming another directory reports the physical path instead.
+	link := filepath.Join(t.TempDir(), "linked-project")
+	if err := os.Symlink(dir, link); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Allow(link); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PWD", t.TempDir())
+	var stdout bytes.Buffer
+	if err := NewRunner(st).Exec(t.Context(), ExecOptions{Dir: link, Command: `printf '%s' "$PWD"`, Stdout: &stdout}); err != nil {
+		t.Fatal(err)
+	}
+	if stdout.String() != link {
+		t.Fatalf("PWD=%q, want %q", stdout.String(), link)
+	}
+}
+
 func TestRunnerUnavailableWorkingDirectory(t *testing.T) {
+	if runtime.GOOS == "darwin" {
+		t.Skip("darwin resolves a removed working directory to its former path, so this failure cannot be induced")
+	}
 	st, dir := runnerProject(t, "@daily true\n")
 	cwd := filepath.Join(dir, "removed")
 	if err := os.Mkdir(cwd, 0o700); err != nil {

@@ -17,7 +17,7 @@
 - Place a `.cronrc` file formatted like a standard crontab in any project directory.
 - Run `cron-person allow` to approve the directory and record its SHA-256 content checksum.
 - Sync active directory jobs into your user crontab with `cron-person crontab sync`.
-- When cron fires, `cron-person exec` sets the current working directory to the project folder, applies `.cronrc` environment variables, validates the authorization hash, and executes the scheduled command.
+- When cron fires, `cron-person exec` sets the current working directory (and `PWD`) to the project folder, applies `.cronrc` environment variables, validates the authorization hash, and executes the scheduled command.
 - Run a task by hand with `cron-person task run`; press Ctrl+C to either stop it or leave it running in the background.
 - Review recent runs with `cron-person task history`, read a run's captured output with `cron-person task log <run-id>`, and watch one in progress with `cron-person task log --follow <run-id>`.
 - Add the shell hook to your profile so your prompt alerts you whenever an unapproved or modified `.cronrc` is encountered.

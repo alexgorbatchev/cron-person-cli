@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-10-29 12:51
+  last_modified: 2026-11-03 12:30
   status: current
 ---
 
@@ -19,7 +19,7 @@ Set `AGENT=1` for compact `key: value` output. Every path printed under the home
 
 ## `.cronrc` format
 
-A `.cronrc` uses crontab syntax: `NAME=value` lines define environment variables for every task, and schedule lines (`*/5 * * * * ./script.sh`, `@hourly make sync`) define tasks. Each task runs with its working directory set to the folder containing `.cronrc`, through `$SHELL -c` (the `.cronrc` `SHELL` wins, then the inherited `SHELL`, then `/bin/sh`). Tasks also receive `CRON_PERSON_DIR` (the directory) and `CRON_PERSON_CRONRC` (the `.cronrc` path).
+A `.cronrc` uses crontab syntax: `NAME=value` lines define environment variables for every task, and schedule lines (`*/5 * * * * ./script.sh`, `@hourly make sync`) define tasks. Each task runs with its working directory set to the folder containing `.cronrc`, through `$SHELL -c` (the `.cronrc` `SHELL` wins, then the inherited `SHELL`, then `/bin/sh`). Tasks also receive `CRON_PERSON_DIR` (the directory) and `CRON_PERSON_CRONRC` (the `.cronrc` path), and `PWD` names the task directory rather than the directory `cron-person` was started from.
 
 ## Workflows
 
