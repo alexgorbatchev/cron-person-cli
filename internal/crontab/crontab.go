@@ -258,11 +258,11 @@ func Preview(st *store.Store, binPath, configPath string) (string, int, error) {
 
 // Sync reads the store, generates the managed block, and updates the system crontab.
 func Sync(st *store.Store, binPath, configPath string) (int, error) {
-	lock, err := lockUpdates(filepath.Dir(st.Path()))
+	release, err := lockUpdates(filepath.Dir(st.Path()))
 	if err != nil {
 		return 0, err
 	}
-	defer lock.Close() // Releases the lock.
+	defer release() // Best effort: the update already succeeded or failed.
 
 	managedBlock, count, err := Preview(st, binPath, configPath)
 	if err != nil {
@@ -287,11 +287,11 @@ func Sync(st *store.Store, binPath, configPath string) (int, error) {
 // Uninstall removes the managed block from the system crontab. It needs only
 // the state directory for its lock, so a damaged store never blocks removal.
 func Uninstall(stateDir string) error {
-	lock, err := lockUpdates(stateDir)
+	release, err := lockUpdates(stateDir)
 	if err != nil {
 		return err
 	}
-	defer lock.Close() // Releases the lock.
+	defer release() // Best effort: the update already succeeded or failed.
 
 	existing, err := ReadSystemCrontab()
 	if err != nil {
@@ -310,13 +310,13 @@ func Uninstall(stateDir string) error {
 // newest store. crontab(1) has no compare-and-swap, so a writer outside
 // cron-person can still be overwritten while an update is between reading
 // and installing the crontab.
-func lockUpdates(stateDir string) (*os.File, error) {
+func lockUpdates(stateDir string) (release func() error, err error) {
 	if err := os.MkdirAll(stateDir, 0o755); err != nil {
 		return nil, fmt.Errorf("locking crontab updates: %w", err)
 	}
-	lock, err := filelock.LockPath(filepath.Join(stateDir, "crontab.lock"))
+	release, err = filelock.LockPath(filepath.Join(stateDir, "crontab.lock"))
 	if err != nil {
 		return nil, fmt.Errorf("locking crontab updates: %w", err)
 	}
-	return lock, nil
+	return release, nil
 }

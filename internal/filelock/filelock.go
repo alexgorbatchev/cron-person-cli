@@ -12,8 +12,10 @@ import (
 var ErrLocked = errors.New("file is locked")
 
 // LockPath opens the lock file at path, creating it when missing, and blocks
-// until it holds an exclusive lock on it. Closing the file releases the lock.
-func LockPath(path string) (*os.File, error) {
+// until it holds an exclusive lock on it. Call release to unlock explicitly
+// before closing, because Windows may hold a lock for a while after its file
+// is closed.
+func LockPath(path string) (release func() error, err error) {
 	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
 		return nil, err
@@ -21,5 +23,5 @@ func LockPath(path string) (*os.File, error) {
 	if err := Lock(f); err != nil {
 		return nil, errors.Join(err, f.Close())
 	}
-	return f, nil
+	return func() error { return errors.Join(Unlock(f), f.Close()) }, nil
 }

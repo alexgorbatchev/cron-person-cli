@@ -97,11 +97,11 @@ func (s *Store) withFileLock(fn func() error) error {
 		return fmt.Errorf("creating state directory: %w", err)
 	}
 
-	lock, err := filelock.LockPath(s.filePath + ".lock")
+	release, err := filelock.LockPath(s.filePath + ".lock")
 	if err != nil {
 		return fmt.Errorf("locking store file: %w", err)
 	}
-	defer lock.Close() // Releases the lock.
+	defer release() // Best effort: the change already succeeded or failed.
 
 	return fn()
 }

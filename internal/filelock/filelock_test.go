@@ -67,29 +67,31 @@ func TestLockErrorsOnClosedFile(t *testing.T) {
 
 func TestLockPathWaitsForTheHolder(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "update.lock")
-	holder, err := LockPath(path)
+	releaseHolder, err := LockPath(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	acquired := make(chan *os.File, 1)
+	acquired := make(chan func() error, 1)
 	go func() {
-		f, err := LockPath(path)
+		release, err := LockPath(path)
 		if err != nil {
 			t.Error(err)
 		}
-		acquired <- f
+		acquired <- release
 	}()
 	select {
 	case <-acquired:
 		t.Fatal("second LockPath acquired a held lock")
 	case <-time.After(100 * time.Millisecond):
 	}
-	if err := holder.Close(); err != nil {
+	if err := releaseHolder(); err != nil {
 		t.Fatal(err)
 	}
 	select {
-	case f := <-acquired:
-		_ = f.Close()
+	case release := <-acquired:
+		if err := release(); err != nil {
+			t.Fatal(err)
+		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("LockPath never acquired the released lock")
 	}

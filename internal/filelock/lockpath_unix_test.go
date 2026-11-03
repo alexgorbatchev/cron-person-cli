@@ -17,8 +17,8 @@ func TestLockPathReportsUnlockableFiles(t *testing.T) {
 	if err := syscall.Mkfifo(path, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if f, err := LockPath(path); err == nil {
-		_ = f.Close()
+	if release, err := LockPath(path); err == nil {
+		_ = release()
 		t.Fatal("LockPath locked a FIFO")
 	}
 }
