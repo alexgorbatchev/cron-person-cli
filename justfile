@@ -67,10 +67,8 @@ vet: lint
 fmt:
     go fmt ./...
 
-# Run static analysis and test suite in sequence
-check:
-    go vet ./...
-    go test -v ./...
+# Run static analysis, then the race-enabled tests and coverage gate CI runs
+check: lint coverage
 
 # Clean up build binaries and temporary files
 clean:

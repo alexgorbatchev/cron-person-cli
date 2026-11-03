@@ -1,6 +1,6 @@
 module github.com/alexgorbatchev/cron-person-cli
 
-go 1.27
+go 1.26.2
 
 require (
 	github.com/alexgorbatchev/cobra-help-tree/v4 v4.0.0
@@ -78,7 +78,7 @@ require (
 	github.com/stretchr/testify v1.12.1 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
-	github.com/vladopajic/go-test-coverage/v2 v2.21.0 // indirect
+	github.com/vladopajic/go-test-coverage/v2 v2.19.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.69.0 // indirect
@@ -88,8 +88,6 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/image v0.41.0 // indirect
-	golang.org/x/mod v0.21.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/tools v0.26.0 // indirect
 )
 

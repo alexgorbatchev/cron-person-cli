@@ -18,7 +18,7 @@ Higher-order per-directory crontab manager with direnv-style shell integration
 - **Verify a Published Release:** `just verify-release <tag>` reads the tag's release workflow run, assets, `checksums.txt`, and each binary's embedded version from GitHub without changing anything; run it after every release.
 - **Measure Capacity:** `just bench` benchmarks `status`, `task list`, `crontab show`, the prompt hook, and `allow` with 10, 100, and 1000 tracked directories of ten-task `.cronrc` files (`cmd/cron-person/capacity_test.go`). Run it before and after changes to whole-store paths.
 - **Check Coverage and Races:** `just coverage` runs the suite under the race detector and fails when any package's own tests cover less than 90% of its statements (`.testcoverage.yml`, `go tool go-test-coverage`). CI and the release `verify` job run the same commands. The race detector only sees one test process; cross-process behavior needs the subprocess fixtures.
-- **Run Static Analysis & Tests:** `just check` (`go vet ./... && go test -v ./...`)
+- **Run Static Analysis & Tests:** `just check` (`just vet`, then `just coverage`: the same race-enabled tests and coverage gate CI runs)
 - **Run Linter / Static Analysis:** `just vet` or `just lint` (`go vet ./...`)
 - **Format Source Code:** `just fmt` (`go fmt ./...`)
 
