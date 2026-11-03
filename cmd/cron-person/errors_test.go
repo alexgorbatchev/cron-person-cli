@@ -215,3 +215,32 @@ func TestCLIOutputWriteFailures(t *testing.T) {
 		}
 	}
 }
+
+// Cobra and main could both print a returned error; only main may, so every
+// failure produces exactly one diagnostic line.
+func TestRunReportsEachFailureOnce(t *testing.T) {
+	empty := t.TempDir()
+	for _, mode := range []struct{ agent, prefix string }{{"0", "[ERROR] "}, {"1", "ERR: "}} {
+		for _, tt := range []struct {
+			name string
+			args []string
+			want string
+		}{
+			{"unknown flag", []string{"--unknown"}, "unknown flag: --unknown"},
+			{"argument error", []string{"dir", "status", "a", "b"}, "accepts at most 1 arg(s)"},
+			{"operational error", []string{"--store", filepath.Join(empty, "allowed.json"), "dir", "check", empty}, "invalid .cronrc"},
+		} {
+			t.Run("agent="+mode.agent+"/"+tt.name, func(t *testing.T) {
+				t.Setenv("AGENT", mode.agent)
+				var stdout, stderr bytes.Buffer
+				if code := run(tt.args, &stdout, &stderr); code != 1 {
+					t.Fatalf("exit %d, want 1", code)
+				}
+				lines := strings.Split(strings.TrimSuffix(stderr.String(), "\n"), "\n")
+				if stdout.Len() != 0 || len(lines) != 1 || !strings.HasPrefix(lines[0], mode.prefix) || !strings.Contains(lines[0], tt.want) {
+					t.Fatalf("stdout=%q stderr=%q, want one %q line mentioning %q", stdout.String(), stderr.String(), mode.prefix, tt.want)
+				}
+			})
+		}
+	}
+}
