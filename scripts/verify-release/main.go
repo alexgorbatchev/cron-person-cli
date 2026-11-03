@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -66,7 +67,6 @@ type verifier struct {
 
 type release struct {
 	TagName string  `json:"tag_name"`
-	Draft   bool    `json:"draft"`
 	Assets  []asset `json:"assets"`
 }
 
@@ -99,12 +99,11 @@ func (v *verifier) verify(tag string) error {
 	}
 	fail(v.checkWorkflow(tag))
 
+	// The by-tag endpoint serves published releases only, so a draft or a
+	// missing release both fail here.
 	var rel release
-	if err := v.getJSON("/repos/"+repo+"/releases/tags/"+tag, &rel); err != nil {
+	if err := v.getJSON("/repos/"+repo+"/releases/tags/"+url.PathEscape(tag), &rel); err != nil {
 		return errors.Join(append(failures, err)...)
-	}
-	if rel.Draft {
-		fail(fmt.Errorf("release %s is a draft", tag))
 	}
 	dir, err := os.MkdirTemp("", "verify-release-*")
 	if err != nil {
@@ -147,7 +146,7 @@ func (v *verifier) checkWorkflow(tag string) error {
 	var runs struct {
 		Runs []workflowRun `json:"workflow_runs"`
 	}
-	if err := v.getJSON("/repos/"+repo+"/actions/workflows/"+workflow+"/runs?branch="+tag, &runs); err != nil {
+	if err := v.getJSON("/repos/"+repo+"/actions/workflows/"+workflow+"/runs?"+url.Values{"branch": {tag}}.Encode(), &runs); err != nil {
 		return err
 	}
 	i := slices.IndexFunc(runs.Runs, func(r workflowRun) bool {
@@ -392,10 +391,27 @@ func checkBinary(path, version, goos, goarch string) error {
 	if settings["GOOS"] != goos || settings["GOARCH"] != goarch {
 		return fmt.Errorf("built for %s/%s", settings["GOOS"], settings["GOARCH"])
 	}
-	if !strings.Contains(settings["-ldflags"], "-X main.version="+version) {
-		return fmt.Errorf("ldflags %q do not set version %s", settings["-ldflags"], version)
+	if got := injectedVersion(settings["-ldflags"]); got != version {
+		return fmt.Errorf("ldflags %q set version %q, want %s", settings["-ldflags"], got, version)
 	}
 	return nil
+}
+
+// injectedVersion returns the value the linker gives main.version: the last
+// -X assignment to it wins.
+func injectedVersion(ldflags string) string {
+	var version string
+	fields := strings.Fields(ldflags)
+	for i, field := range fields {
+		assignment, ok := strings.CutPrefix(field, "-X=")
+		if field == "-X" && i+1 < len(fields) {
+			assignment, ok = fields[i+1], true
+		}
+		if value, found := strings.CutPrefix(assignment, "main.version="); ok && found {
+			version = value
+		}
+	}
+	return version
 }
 
 func checkRunningVersion(path, version string) error {

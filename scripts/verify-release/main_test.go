@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -20,7 +21,8 @@ import (
 	"time"
 )
 
-const fixtureVersion = "1.2.3"
+// fixtureVersion carries build metadata so the tag needs URL escaping.
+const fixtureVersion = "1.2.3+build.1"
 
 // binaries holds fakecli builds keyed by "goos/goarch/version".
 var binaries = map[string][]byte{}
@@ -37,6 +39,7 @@ func TestMain(m *testing.M) {
 			{runtime.GOOS, fixtureVersion},
 			{"windows", fixtureVersion},
 			{runtime.GOOS, "9.9.9"},
+			{runtime.GOOS, "1.2.3+build.10"},
 		} {
 			out := filepath.Join(dir, b.goos+b.version)
 			build := exec.Command("go", "build", "-ldflags", "-s -w -X main.version="+b.version, "-o", out, "./testdata/fakecli")
@@ -67,7 +70,6 @@ type job struct {
 // fixture is a published release served by a fake GitHub.
 type fixture struct {
 	config    string
-	draft     bool
 	runs      []workflowRun
 	jobs      []job
 	assets    map[string][]byte
@@ -129,9 +131,18 @@ func (f *fixture) verify(t *testing.T) (string, error) {
 		})
 	}
 	api := "/repos/" + repo
-	serveJSON(api+"/actions/workflows/"+workflow+"/runs", func() any { return map[string]any{"workflow_runs": f.runs} })
+	mux.HandleFunc(api+"/actions/workflows/"+workflow+"/runs", func(w http.ResponseWriter, r *http.Request) {
+		// GitHub filters by the decoded branch, so a misencoded tag finds no run.
+		var runs []workflowRun
+		for _, run := range f.runs {
+			if run.HeadBranch == r.URL.Query().Get("branch") {
+				runs = append(runs, run)
+			}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"workflow_runs": runs})
+	})
 	serveJSON(api+"/actions/runs/7/jobs", func() any { return map[string]any{"jobs": f.jobs} })
-	serveJSON(api+"/releases/tags/v"+fixtureVersion, func() any {
+	serveJSON(api+"/releases/tags/"+url.PathEscape("v"+fixtureVersion), func() any {
 		assets := []asset{{Name: "checksums.txt", URL: srv.URL + "/download/checksums.txt"}}
 		for name := range f.assets {
 			if !f.missing[name] {
@@ -144,7 +155,7 @@ func (f *fixture) verify(t *testing.T) (string, error) {
 		if f.brokenAPI {
 			return "not a release"
 		}
-		return release{TagName: "v" + fixtureVersion, Draft: f.draft, Assets: assets}
+		return release{TagName: "v" + fixtureVersion, Assets: assets}
 	})
 	mux.HandleFunc("/download/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "" {
@@ -197,7 +208,6 @@ func TestVerifyReportsInconsistentReleases(t *testing.T) {
 		{"missing job", func(_ *testing.T, f *fixture) { f.jobs = f.jobs[:1] }, "lacks a verify or release job"},
 		{"failed job", func(_ *testing.T, f *fixture) { f.jobs[0].Conclusion = "failure" }, `verify "failure"`},
 		{"release before verify", func(_ *testing.T, f *fixture) { f.jobs[1].StartedAt = f.jobs[0].StartedAt }, "before verify completed"},
-		{"draft", func(_ *testing.T, f *fixture) { f.draft = true }, "is a draft"},
 		{"missing asset", func(_ *testing.T, f *fixture) { f.missing[native] = true }, "missing asset " + native},
 		{"unexpected asset", func(_ *testing.T, f *fixture) { f.assets["extra.txt"] = []byte("x") }, "unexpected asset extra.txt"},
 		{"checksum mismatch", func(_ *testing.T, f *fixture) {
@@ -207,7 +217,10 @@ func TestVerifyReportsInconsistentReleases(t *testing.T) {
 		{"malformed checksums", func(_ *testing.T, f *fixture) { f.checksums = "garbage\n" }, "malformed checksums.txt"},
 		{"wrong version", func(t *testing.T, f *fixture) {
 			f.assets[native] = tarGz(t, "tool", binaries[runtime.GOOS+"/"+runtime.GOARCH+"/9.9.9"])
-		}, "do not set version " + fixtureVersion},
+		}, `set version "9.9.9"`},
+		{"version sharing a prefix", func(t *testing.T, f *fixture) {
+			f.assets[native] = tarGz(t, "tool", binaries[runtime.GOOS+"/"+runtime.GOARCH+"/1.2.3+build.10"])
+		}, `set version "1.2.3+build.10"`},
 		{"wrong platform", func(t *testing.T, f *fixture) {
 			f.assets[native] = tarGz(t, "tool", binaries["windows/"+runtime.GOARCH+"/"+fixtureVersion])
 		}, "built for windows/"},
@@ -316,4 +329,18 @@ func zipped(t *testing.T, name string, data []byte) []byte {
 		t.Fatal(err)
 	}
 	return buf.Bytes()
+}
+
+func TestInjectedVersion(t *testing.T) {
+	for _, tt := range []struct{ ldflags, want string }{
+		{"-s -w -X main.version=0.0.2", "0.0.2"},
+		{"-X=main.version=0.0.2", "0.0.2"},
+		{"-X main.version=0.0.1 -X main.version=9.9.9", "9.9.9"},
+		{"-X main.other=0.0.2", ""},
+		{"-s -w -X", ""},
+	} {
+		if got := injectedVersion(tt.ldflags); got != tt.want {
+			t.Errorf("injectedVersion(%q) = %q, want %q", tt.ldflags, got, tt.want)
+		}
+	}
 }
