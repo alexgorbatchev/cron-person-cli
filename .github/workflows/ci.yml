@@ -34,5 +34,10 @@ jobs:
       - name: Vet
         run: go vet ./...
 
+      # The cron daemon test needs Docker and real cron minutes, so CI only
+      # keeps it compiling.
+      - name: Vet daemon integration test
+        run: go vet -tags daemon ./cmd/cron-person
+
       - name: Test
         run: go test -v ./...

@@ -18,7 +18,14 @@ test:
 
 # Run generated crontab entries under a real cron daemon in a disposable container (needs Docker; takes about 5 minutes)
 test-daemon:
-    DOCKER_HOST="${DOCKER_HOST:-$(docker context inspect --format '{{{{.Endpoints.docker.Host}}')}" go test -tags daemon -count=1 -v -timeout 15m -run TestDaemonRunsGeneratedEntries ./cmd/cron-person
+    #!/usr/bin/env bash
+    set -euo pipefail
+    # testcontainers ignores Docker contexts, so export the current one.
+    if [ -z "${DOCKER_HOST:-}" ]; then
+        DOCKER_HOST="$(docker context inspect --format '{{{{.Endpoints.docker.Host}}')"
+        export DOCKER_HOST
+    fi
+    go test -tags daemon -count=1 -v -timeout 20m -run TestDaemonRunsGeneratedEntries ./cmd/cron-person
 
 # Build binary into bin/
 build:

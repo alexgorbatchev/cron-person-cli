@@ -35,8 +35,9 @@ const (
 // daemon actually runs. Unit tests stay hermetic; this one runs only with
 // `just test-daemon` and never touches the host crontab.
 func TestDaemonRunsGeneratedEntries(t *testing.T) {
-	testcontainers.SkipIfProviderIsNotHealthy(t)
-	ctx, cancel := context.WithTimeout(t.Context(), 12*time.Minute)
+	// No skip without Docker: this test only runs when asked for, so a
+	// missing daemon must fail it rather than pass it vacuously.
+	ctx, cancel := context.WithTimeout(t.Context(), 15*time.Minute)
 	defer cancel()
 
 	ctr, err := testcontainers.Run(ctx, "", testcontainers.WithDockerfile(testcontainers.FromDockerfile{
@@ -58,7 +59,11 @@ printf '%s\n' '` + personalJob + `' | crontab -`)
 	d.asUser(daemonBin + " allow " + daemonProject + " && " + daemonBin + " crontab sync")
 
 	start := time.Now()
-	d.waitFor("first scheduled run", func() bool { return d.outputLines() >= 1 })
+	// A run is recorded as running until its command exits, so wait for the
+	// outcome rather than for the command's output.
+	d.waitFor("first scheduled run", func() bool {
+		return d.outputLines() >= 1 && strings.Contains(d.history()[0], "status: succeeded")
+	})
 	t.Logf("first fire after %s", time.Since(start).Round(time.Second))
 	if got := d.asUser("head -n 1 " + daemonOutput); got != daemonProject+"|from-cronrc|100%\n" {
 		t.Fatalf("scheduled run wrote %q, want the project directory, .cronrc environment, and a literal percent sign", got)
@@ -129,8 +134,8 @@ func (d *daemon) asRoot(script string) string { return d.run(script, tcexec.With
 
 func (d *daemon) run(script string, user tcexec.ProcessOption) string {
 	d.t.Helper()
-	// cron-person's own environment variables would leak in from a login
-	// shell otherwise; HOME selects the tester's default store.
+	// docker exec keeps the container's root environment, so HOME must name
+	// the tester's home for the default store, and AGENT=1 keeps output parseable.
 	env := tcexec.WithEnv([]string{"HOME=/home/" + daemonUser, "AGENT=1"})
 	code, out, err := d.ctr.Exec(d.ctx, []string{"sh", "-c", script}, user, env, tcexec.Multiplexed())
 	if err != nil {
