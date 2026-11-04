@@ -14,7 +14,7 @@ func TestSchedulableSplitsReadyAndSkippedDirectories(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "allowed.json")
 	var records []Record
-	for _, name := range []string{"ready", "changed", "orphan", "special", "malformed", "noncanonical"} {
+	for _, name := range []string{"ready", "changed", "orphan", "special", "malformed", "noncanonical", "removed-noncanonical", "line\nbreak"} {
 		project := filepath.Join(dir, name)
 		if err := os.Mkdir(project, 0o700); err != nil {
 			t.Fatal(err)
@@ -27,7 +27,7 @@ func TestSchedulableSplitsReadyAndSkippedDirectories(t *testing.T) {
 		cronrcPath := filepath.Join(project, ".cronrc")
 		writeStoreFile(t, cronrcPath, content)
 		key := project
-		if name == "noncanonical" {
+		if strings.HasSuffix(name, "noncanonical") {
 			key = project + "/"
 		}
 		records = append(records, Record{Dir: key, Path: cronrcPath, Hash: cronrc.ComputeHash([]byte(content))})
@@ -38,8 +38,10 @@ func TestSchedulableSplitsReadyAndSkippedDirectories(t *testing.T) {
 	}
 	writeStoreFile(t, path, string(data))
 	writeStoreFile(t, filepath.Join(dir, "changed", ".cronrc"), "@daily edited\n")
-	if err := os.Remove(filepath.Join(dir, "orphan", ".cronrc")); err != nil {
-		t.Fatal(err)
+	for _, name := range []string{"orphan", "removed-noncanonical"} {
+		if err := os.Remove(filepath.Join(dir, name, ".cronrc")); err != nil {
+			t.Fatal(err)
+		}
 	}
 	special := filepath.Join(dir, "special", ".cronrc")
 	if err := os.Remove(special); err != nil {
@@ -61,11 +63,13 @@ func TestSchedulableSplitsReadyAndSkippedDirectories(t *testing.T) {
 		t.Fatalf("ready = %+v", ready)
 	}
 	want := map[string]string{
-		"changed":       ".cronrc changed since it was allowed: run 'cron-person allow " + filepath.Join(dir, "changed") + "'",
-		"orphan":        ".cronrc no longer exists",
-		"special":       ".cronrc is not a regular file",
-		"malformed":     "parsing " + filepath.Join(dir, "malformed", ".cronrc") + ": line 1:",
-		"noncanonical/": "directory is unauthorized",
+		"changed":               ".cronrc changed since it was allowed: run 'cron-person allow " + filepath.Join(dir, "changed") + "'",
+		"orphan":                ".cronrc no longer exists",
+		"special":               ".cronrc is not a regular file",
+		"malformed":             "parsing " + filepath.Join(dir, "malformed", ".cronrc") + ": line 1:",
+		"noncanonical/":         "store entry is not the canonical path " + filepath.Join(dir, "noncanonical") + ": run 'cron-person allow",
+		"removed-noncanonical/": "store entry is not the canonical path " + filepath.Join(dir, "removed-noncanonical"),
+		"line\nbreak":           "directory path contains a line break or NUL",
 	}
 	if len(skipped) != len(want) {
 		t.Fatalf("skipped %d directories, want %d: %+v", len(skipped), len(want), skipped)
@@ -80,5 +84,21 @@ func TestSchedulableSplitsReadyAndSkippedDirectories(t *testing.T) {
 	writeStoreFile(t, path, "{")
 	if _, _, err := st.Schedulable(); err == nil {
 		t.Fatal("corrupt store accepted")
+	}
+}
+
+func TestAllowRefusesUnschedulableDirectoryPaths(t *testing.T) {
+	dir := t.TempDir()
+	st, err := NewStore(filepath.Join(dir, "allowed.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	project := filepath.Join(dir, "line\nbreak")
+	if err := os.Mkdir(project, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	writeStoreFile(t, filepath.Join(project, ".cronrc"), "@daily true\n")
+	if _, err := st.Allow(project); err == nil || !strings.Contains(err.Error(), "line break or NUL") {
+		t.Fatalf("Allow = %v, want a refusal", err)
 	}
 }

@@ -244,6 +244,9 @@ func (s *Store) Allow(dir string) (*Record, error) {
 	if err != nil {
 		return nil, fmt.Errorf("resolving directory path: %w", err)
 	}
+	if strings.ContainsAny(absDir, unschedulablePathChars) {
+		return nil, fmt.Errorf("directory %q contains a line break or NUL, which a crontab entry cannot hold", absDir)
+	}
 
 	cronrcPath := filepath.Join(absDir, ".cronrc")
 	parsed, err := cronrc.ParseFile(cronrcPath)
@@ -415,6 +418,10 @@ type Directory struct {
 	File   *cronrc.File
 }
 
+// unschedulablePathChars cannot appear in a directory path written into a
+// crontab entry.
+const unschedulablePathChars = "\r\n\x00"
+
 // Skipped is a tracked directory left out of scheduling, and why.
 type Skipped struct {
 	Record  Record
@@ -449,6 +456,12 @@ func (s *Store) Schedulable() ([]Directory, []Skipped, error) {
 // problem explains why an inspected directory's tasks may not run, or
 // returns nil when they may.
 func (in Inspection) problem() error {
+	if abs, err := filepath.Abs(in.Record.Dir); err == nil && abs != in.Record.Dir {
+		return fmt.Errorf("store entry is not the canonical path %s: run 'cron-person allow %s' to approve the directory", abs, abs)
+	}
+	if strings.ContainsAny(in.Record.Dir, unschedulablePathChars) {
+		return errors.New("directory path contains a line break or NUL, which a crontab entry cannot hold")
+	}
 	switch {
 	case in.Err != nil:
 		return in.Err

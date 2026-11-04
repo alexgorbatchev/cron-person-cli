@@ -121,7 +121,7 @@ func TestCommandsReportInspectionAndParseErrors(t *testing.T) {
 // still report, preview, or install the healthy directories.
 func TestAggregateCommandsSkipBrokenDirectories(t *testing.T) {
 	for _, mode := range []struct{ agent, prefix string }{{"0", "[WARN] "}, {"1", "WARN: "}} {
-		for _, failure := range []string{"unreadable", "malformed", "changed"} {
+		for _, failure := range []string{"unreadable", "malformed", "carriage return", "changed"} {
 			for _, command := range [][]string{{"task", "list"}, {"status"}, {"crontab", "show"}, {"crontab", "sync"}} {
 				t.Run(mode.agent+"/"+failure+"/"+strings.Join(command, " "), func(t *testing.T) {
 					t.Setenv("AGENT", mode.agent)
@@ -151,9 +151,12 @@ func TestAggregateCommandsSkipBrokenDirectories(t *testing.T) {
 							t.Fatal(err)
 						}
 						want = "skipped ~/broken: checking .cronrc"
-					case "malformed":
+					case "malformed", "carriage return":
 						// Approve content the parser rejects, as a grammar change would.
 						content := "not a valid schedule\n"
+						if failure == "carriage return" {
+							content = "@daily printf broken\rmore\n"
+						}
 						writeCLIFile(t, brokenPath, content)
 						records := []store.Record{
 							{Dir: broken, Path: brokenPath, Hash: cronrc.ComputeHash([]byte(content))},

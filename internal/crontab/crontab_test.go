@@ -479,11 +479,9 @@ func TestGenerateBlock_RejectsInvalidControlCharacters(t *testing.T) {
 		t.Fatal("expected error for carriage return in record Dir")
 	}
 
-	nulCronrc := filepath.Join(dir, "nul.cronrc")
-	if err := os.WriteFile(nulCronrc, []byte("@hourly echo ok\x00malicious\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := GenerateBlock(directories(t, store.Record{Dir: dir, Path: nulCronrc}), Invocation{Bin: "/bin/cron-person", Store: state, Config: testConfig}); err == nil {
+	// Parsing rejects such commands; generation still refuses them.
+	nul := []store.Directory{{Record: store.Record{Dir: dir}, File: &cronrc.File{Tasks: []cronrc.Task{{Schedule: "@hourly", Command: "echo ok\x00malicious"}}}}}
+	if _, err := GenerateBlock(nul, Invocation{Bin: "/bin/cron-person", Store: state, Config: testConfig}); err == nil {
 		t.Fatal("expected error for NUL byte in command")
 	}
 }

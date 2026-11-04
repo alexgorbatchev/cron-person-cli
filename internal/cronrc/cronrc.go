@@ -105,6 +105,10 @@ func Parse(r io.Reader, filePath string) (*File, error) {
 		if parseErr != nil {
 			return nil, fmt.Errorf("line %d: %w", lineNum, parseErr)
 		}
+		// A crontab entry is one line, so these cannot be scheduled.
+		if strings.ContainsAny(task.Command, "\r\x00") {
+			return nil, fmt.Errorf("line %d: command contains a carriage return or NUL, which a crontab entry cannot hold", lineNum)
+		}
 		file.Tasks = append(file.Tasks, *task)
 	}
 

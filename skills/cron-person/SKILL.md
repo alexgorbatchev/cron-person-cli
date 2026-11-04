@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-03 16:31
+  last_modified: 2026-11-03 16:42
   status: current
 ---
 
@@ -23,9 +23,9 @@ Scheduling needs a cron daemon and the `crontab` command, available on Linux and
 
 A `.cronrc` uses crontab syntax: `NAME=value` lines define environment variables for every task, and schedule lines (`*/5 * * * * ./script.sh`, `@hourly make sync`) define tasks. Each task runs with its working directory set to the folder containing `.cronrc`, through `$SHELL -c` (the `.cronrc` `SHELL` wins, then the inherited `SHELL`, then `/bin/sh`). Tasks also receive `CRON_PERSON_DIR` (the directory) and `CRON_PERSON_CRONRC` (the `.cronrc` path), and `PWD` names the task directory rather than the directory `cron-person` was started from. `.cronrc` variables reach only the task and are never written to the user crontab, so cron's own settings have no scheduling effect there. To apply one to cron-person entries, set it in the user crontab above the managed block, and only where the daemon honors it: `SHELL`, `HOME`, and `MAILTO` on cronie, Debian cron, and macOS cron; `MAILFROM` and `CRON_TZ` on cronie only. A `SHELL` set there must be POSIX-compatible, since cron runs generated entries through it and it becomes the task shell for a `.cronrc` without `SHELL`. Schedules fire in the daemon's time zone. Daylight saving handling follows the daemon: cronie and Debian cron catch up fixed-time jobs skipped by a forward change of less than 3 hours and never rerun them on a backward change, while frequent (cronie) or wildcard (Debian) jobs follow the clock; macOS cron, as launchd starts it, skips entries in a skipped interval and runs entries in a repeated interval twice.
 
-A `.cronrc` must be a regular file (symlinks are followed) of at most 1 MiB. Other file types named `.cronrc` (directory, FIFO, device) count as no `.cronrc`, and larger files are rejected.
+A `.cronrc` must be a regular file (symlinks are followed) of at most 1 MiB. Other file types named `.cronrc` (directory, FIFO, device) count as no `.cronrc`, and larger files are rejected. A task command cannot contain a carriage return or NUL, and `allow` refuses a directory whose path contains a line break or NUL, because a crontab entry is a single line.
 
-Commands over every tracked directory (`status`, `task list`, `crontab show`, `crontab sync`) leave out any directory whose tasks cannot run (its `.cronrc` changed since approval, was removed, is not a regular file, cannot be read, or no longer parses) and name each one on stderr as `[WARN] skipped <dir>: <reason>` (`WARN: ...` in agent mode), then report or install the remaining directories and exit 0.
+Commands over every tracked directory (`status`, `task list`, `crontab show`, `crontab sync`) leave out any directory whose tasks cannot run (its `.cronrc` changed since approval, was removed, is not a regular file, cannot be read, or no longer parses; its path contains a line break; or its store entry is not the directory's canonical path) and name each one on stderr as `[WARN] skipped <dir>: <reason>` (`WARN: ...` in agent mode), then report or install the remaining directories and exit 0.
 
 ## Workflows
 

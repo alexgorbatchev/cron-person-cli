@@ -227,3 +227,11 @@ func TestFindCronrc(t *testing.T) {
 		t.Fatal("expected non-empty hash")
 	}
 }
+
+func TestParseRejectsCommandsACrontabCannotHold(t *testing.T) {
+	for _, content := range []string{"@daily echo a\recho b\n", "@daily echo a\x00b\n"} {
+		if _, err := Parse(strings.NewReader(content), ".cronrc"); err == nil || !strings.Contains(err.Error(), "line 1: command contains a carriage return or NUL") {
+			t.Errorf("Parse(%q) = %v, want a refusal", content, err)
+		}
+	}
+}
