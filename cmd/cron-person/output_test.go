@@ -114,8 +114,9 @@ func TestCommandsReportInspectionAndParseErrors(t *testing.T) {
 	}
 }
 
-// Commands over every tracked directory name each broken one on stderr and
-// still report, preview, or install the healthy directories.
+// Commands over every tracked directory still report, preview, or install the
+// healthy directories and name each broken one: on stderr, or for status on
+// its own row.
 func TestAggregateCommandsSkipBrokenDirectories(t *testing.T) {
 	for _, mode := range []struct{ agent, prefix string }{{"0", "[WARN] "}, {"1", "WARN: "}} {
 		for _, failure := range []string{"unreadable", "malformed", "carriage return", "changed"} {
@@ -176,9 +177,14 @@ func TestAggregateCommandsSkipBrokenDirectories(t *testing.T) {
 					}
 					if strings.Join(command, " ") == "status" {
 						// Status shows the reason on the directory's own row instead.
+						status := map[string]string{"unreadable": "unreadable", "malformed": "invalid", "carriage return": "invalid", "changed": "changed"}[failure]
+						brokenRow := modeText(mode.agent, "  [WARN] ~/broken ("+status+")\n", "dir: ~/broken\tstatus: "+status+"\t")
+						healthyRow := modeText(mode.agent, "  [OK] ~/healthy (allowed, 1 task)\n", "dir: ~/healthy\tstatus: allowed\t")
+						out := stdout.String()
+						broken, healthy := strings.Index(out, brokenRow), strings.Index(out, healthyRow)
 						reason := strings.TrimPrefix(want, "skipped ~/broken: ")
-						if stderr.Len() != 0 || !strings.Contains(stdout.String(), "~/broken") || !strings.Contains(stdout.String(), reason) {
-							t.Fatalf("stdout %q stderr %q, want a row for ~/broken with %q", stdout.String(), stderr.String(), reason)
+						if stderr.Len() != 0 || broken < 0 || healthy < broken || !strings.Contains(out[broken:healthy], reason) {
+							t.Fatalf("stdout %q stderr %q, want %q with %q before %q", out, stderr.String(), brokenRow, reason, healthyRow)
 						}
 					} else {
 						lines := strings.Split(strings.TrimSuffix(stderr.String(), "\n"), "\n")
@@ -246,6 +252,14 @@ func TestSkippedWarningsStayOnOneLine(t *testing.T) {
 			want := mode.prefix + `skipped ~/line\nbreak: directory path contains a line break or NUL, which a crontab entry cannot hold`
 			if stderr.String() != want+"\n" {
 				t.Fatalf("stderr %q, want %q", stderr.String(), want+"\n")
+			}
+			stdout.Reset()
+			if code := run([]string{"--store", state, "status"}, &stdout, &stderr); code != 0 {
+				t.Fatalf("status exit %d", code)
+			}
+			row := modeText(mode.agent, "  [WARN] ~/line\\nbreak (invalid)\n", "dir: ~/line\\nbreak\tstatus: invalid\t")
+			if !strings.Contains(stdout.String(), row) {
+				t.Fatalf("status %q lacks the one-line row %q", stdout.String(), row)
 			}
 		})
 	}

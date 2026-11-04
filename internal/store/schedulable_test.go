@@ -14,7 +14,7 @@ func TestSchedulableSplitsReadyAndSkippedDirectories(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "allowed.json")
 	var records []Record
-	for _, name := range []string{"ready", "changed", "orphan", "special", "malformed", "noncanonical", "removed-noncanonical", "line\nbreak"} {
+	for _, name := range []string{"ready", "changed", "orphan", "special", "malformed", "noncanonical", "removed-noncanonical", "line\nbreak", "loop"} {
 		project := filepath.Join(dir, name)
 		if err := os.Mkdir(project, 0o700); err != nil {
 			t.Fatal(err)
@@ -43,6 +43,13 @@ func TestSchedulableSplitsReadyAndSkippedDirectories(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	loop := filepath.Join(dir, "loop", ".cronrc")
+	if err := os.Remove(loop); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(".cronrc", loop); err != nil {
+		t.Fatal(err)
+	}
 	special := filepath.Join(dir, "special", ".cronrc")
 	if err := os.Remove(special); err != nil {
 		t.Fatal(err)
@@ -70,14 +77,23 @@ func TestSchedulableSplitsReadyAndSkippedDirectories(t *testing.T) {
 		"noncanonical/":         "is not the canonical path " + filepath.Join(dir, "noncanonical") + ": run 'cron-person deny",
 		"removed-noncanonical/": "is not the canonical path " + filepath.Join(dir, "removed-noncanonical"),
 		"line\nbreak":           "directory path contains a line break or NUL",
+		"loop":                  "checking .cronrc",
 	}
 	if len(skipped) != len(want) {
 		t.Fatalf("skipped %d directories, want %d: %+v", len(skipped), len(want), skipped)
+	}
+	wantStatus := map[string]DirStatus{
+		"changed": StatusChanged, "orphan": StatusOrphan, "special": StatusMissingCronrc,
+		"malformed": StatusInvalid, "noncanonical/": StatusUnauthorized, "removed-noncanonical/": StatusUnauthorized,
+		"line\nbreak": StatusInvalid, "loop": StatusUnreadable,
 	}
 	for _, s := range skipped {
 		name := strings.TrimPrefix(s.Record.Dir, dir+string(filepath.Separator))
 		if w, ok := want[name]; !ok || !strings.Contains(s.Problem.Error(), w) {
 			t.Errorf("%s: problem %v, want %q", name, s.Problem, w)
+		}
+		if s.Status != wantStatus[name] {
+			t.Errorf("%s: status %s, want %s", name, s.Status, wantStatus[name])
 		}
 	}
 

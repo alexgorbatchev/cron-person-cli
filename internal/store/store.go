@@ -451,8 +451,8 @@ func (s *Store) Schedulable() ([]Directory, []Skipped, error) {
 	var ready []Directory
 	var skipped []Skipped
 	for _, in := range inspections {
-		if problem := in.problem(); problem != nil {
-			skipped = append(skipped, Skipped{Record: in.Record, Status: in.skippedStatus(), Problem: problem})
+		if status, problem := in.assess(); problem != nil {
+			skipped = append(skipped, Skipped{Record: in.Record, Status: status, Problem: problem})
 			continue
 		}
 		file, err := cronrc.Parse(bytes.NewReader(in.Snapshot), in.Record.Path)
@@ -465,40 +465,29 @@ func (s *Store) Schedulable() ([]Directory, []Skipped, error) {
 	return ready, skipped, nil
 }
 
-// skippedStatus is the status reported for a directory problem leaves out.
-func (in Inspection) skippedStatus() DirStatus {
-	switch {
-	case in.Err != nil:
-		return StatusUnreadable
-	case strings.ContainsAny(in.Record.Dir, unschedulablePathChars):
-		return StatusInvalid
-	default:
-		return in.Status
-	}
-}
-
-// problem explains why an inspected directory's tasks may not run, or
-// returns nil when they may.
-func (in Inspection) problem() error {
+// assess reports whether an inspected directory's tasks may run: a nil
+// problem means they may; otherwise the status and problem say why not.
+// Both come from one ordered set of checks so they always agree.
+func (in Inspection) assess() (DirStatus, error) {
 	if abs, err := filepath.Abs(in.Record.Dir); err == nil && abs != in.Record.Dir {
-		return fmt.Errorf("store entry %q is not the canonical path %s: run 'cron-person deny %s' to remove it, then allow the directory again", in.Record.Dir, abs, abs)
+		return StatusUnauthorized, fmt.Errorf("store entry %q is not the canonical path %s: run 'cron-person deny %s' to remove it, then allow the directory again", in.Record.Dir, abs, abs)
 	}
 	if strings.ContainsAny(in.Record.Dir, unschedulablePathChars) {
-		return errors.New("directory path contains a line break or NUL, which a crontab entry cannot hold")
+		return StatusInvalid, errors.New("directory path contains a line break or NUL, which a crontab entry cannot hold")
 	}
 	switch {
 	case in.Err != nil:
-		return in.Err
+		return StatusUnreadable, in.Err
 	case in.Status == StatusAllowed:
-		return nil
+		return StatusAllowed, nil
 	case in.Status == StatusChanged:
-		return fmt.Errorf(".cronrc changed since it was allowed: run 'cron-person allow %s' to approve it", in.Record.Dir)
+		return StatusChanged, fmt.Errorf(".cronrc changed since it was allowed: run 'cron-person allow %s' to approve it", in.Record.Dir)
 	case in.Status == StatusOrphan:
-		return errors.New(".cronrc no longer exists")
+		return StatusOrphan, errors.New(".cronrc no longer exists")
 	case in.Status == StatusMissingCronrc:
-		return errors.New(".cronrc is not a regular file")
+		return StatusMissingCronrc, errors.New(".cronrc is not a regular file")
 	default:
-		return fmt.Errorf("directory is %s", in.Status)
+		return in.Status, fmt.Errorf("directory is %s", in.Status)
 	}
 }
 
