@@ -101,7 +101,7 @@ func TestStore_AllowDenyStatus(t *testing.T) {
 	}
 }
 
-func TestStore_PersistenceAndPrune(t *testing.T) {
+func TestStore_PersistenceAndOrphans(t *testing.T) {
 	tempDir := t.TempDir()
 	storePath := filepath.Join(tempDir, "state", "allowed.json")
 
@@ -139,15 +139,15 @@ func TestStore_PersistenceAndPrune(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	pruned, err := st2.Prune()
-	if err != nil {
+	// A removed directory stays tracked as an orphan until it is denied.
+	if status, _, err := st2.Status(proj2); err != nil || status != StatusOrphan {
+		t.Fatalf("removed directory status=%s err=%v, want %s", status, err, StatusOrphan)
+	}
+	if err := st2.Deny(proj2); err != nil {
 		t.Fatal(err)
 	}
-	if len(pruned) != 1 || pruned[0] != proj2 {
-		t.Fatalf("expected pruned [proj2], got %v", pruned)
-	}
 	if len(mustList(t, st2)) != 1 {
-		t.Fatalf("expected 1 record after prune, got %d", len(mustList(t, st2)))
+		t.Fatalf("expected 1 record after deny, got %d", len(mustList(t, st2)))
 	}
 }
 

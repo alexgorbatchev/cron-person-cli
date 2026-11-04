@@ -433,33 +433,3 @@ func classify(data []byte, readErr error, rec *Record) (DirStatus, *Record, []by
 		return StatusAllowed, rec, data, nil
 	}
 }
-
-// Prune removes records for directories that no longer exist or no longer have a .cronrc file.
-func (s *Store) Prune() ([]string, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	var pruned []string
-	err := s.withFileLock(func() error {
-		if err := s.reloadLocked(); err != nil {
-			return err
-		}
-		next := s.cloneRecordsLocked()
-		for dir := range next {
-			cronrcPath := filepath.Join(dir, ".cronrc")
-			if info, err := os.Stat(cronrcPath); err != nil || info.IsDir() {
-				delete(next, dir)
-				pruned = append(pruned, dir)
-			}
-		}
-		if len(pruned) > 0 {
-			return s.saveRecordsLocked(next)
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-	sort.Strings(pruned)
-	return pruned, nil
-}

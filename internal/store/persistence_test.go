@@ -105,9 +105,6 @@ func TestStoreCopiesAndSortedPersistence(t *testing.T) {
 			t.Fatalf("unexpected missing record: %+v, %v", got, ok)
 		}
 	}
-	if pruned, err := st.Prune(); err != nil || len(pruned) != 0 {
-		t.Fatalf("valid projects pruned: %v, %v", pruned, err)
-	}
 }
 
 func TestStorePersistenceErrors(t *testing.T) {
@@ -164,16 +161,11 @@ func TestStorePersistenceErrors(t *testing.T) {
 			if err := st.Deny(project); err == nil || !strings.Contains(err.Error(), want) {
 				t.Fatalf("deny error=%v, want %q", err, want)
 			}
-			if failure == "corrupt reload" {
-				if _, err := st.Prune(); err == nil || !strings.Contains(err.Error(), want) {
-					t.Fatalf("prune error=%v, want %q", err, want)
-				}
-			}
 		})
 	}
 }
 
-func TestStoreInvalidCronrcAndPruneFailure(t *testing.T) {
+func TestStoreInvalidCronrcAndPersistenceFailure(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "state.json")
 	st, err := NewStore(path)
@@ -203,8 +195,8 @@ func TestStoreInvalidCronrcAndPruneFailure(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
-	if _, err := st.Prune(); err == nil || !strings.Contains(err.Error(), "writing store temp file") {
-		t.Fatalf("expected pruning persistence error, got %v", err)
+	if err := st.Deny(dir); err == nil || !strings.Contains(err.Error(), "writing store temp file") {
+		t.Fatalf("expected deny persistence error, got %v", err)
 	}
 }
 
@@ -291,7 +283,7 @@ func TestStoreOverlappingWritersPreserveRevocationsAndApprovals(t *testing.T) {
 		}
 	}
 
-	// Independent store approves dirC while storeA prunes removed dirB.
+	// Independent store approves dirC while storeA revokes dirB.
 	storeC, err := NewStore(path)
 	if err != nil {
 		t.Fatal(err)
@@ -299,19 +291,18 @@ func TestStoreOverlappingWritersPreserveRevocationsAndApprovals(t *testing.T) {
 	if _, err := storeC.Allow(dirC); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Remove(filepath.Join(dirB, ".cronrc")); err != nil {
+	if err := storeA.Deny(dirB); err != nil {
 		t.Fatal(err)
 	}
-	pruned, err := storeA.Prune()
-	if err != nil || !reflect.DeepEqual(pruned, []string{dirB}) {
-		t.Fatalf("pruned=%v err=%v, want [%s]", pruned, err, dirB)
-	}
-	reopenedAfterPrune, err := NewStore(path)
+	reopenedAfterDeny, err := NewStore(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if status, _, err := reopenedAfterPrune.Status(dirC); err != nil || status != StatusAllowed {
-		t.Fatalf("dirC lost during prune: status=%s err=%v", status, err)
+	if status, _, err := reopenedAfterDeny.Status(dirC); err != nil || status != StatusAllowed {
+		t.Fatalf("dirC lost during deny: status=%s err=%v", status, err)
+	}
+	if status, _, err := reopenedAfterDeny.Status(dirB); err != nil || status != StatusUnauthorized {
+		t.Fatalf("dirB still authorized after deny: status=%s err=%v", status, err)
 	}
 
 	// Verify that holding the file lock blocks a concurrent writer until unlock.
@@ -456,16 +447,5 @@ func TestStoreFailedPersistencePreservesMemoryConsistency(t *testing.T) {
 	}
 	if status, _, err := st.Status(project); err != nil || status != StatusAllowed {
 		t.Fatalf("failed Deny changed in-memory status=%s err=%v, want %s", status, err, StatusAllowed)
-	}
-
-	// 3. Failed Prune must not remove the record from memory when commit fails.
-	if err := os.Remove(filepath.Join(project, ".cronrc")); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := st.Prune(); err == nil {
-		t.Fatal("expected Prune to fail when store path is a directory")
-	}
-	if _, ok, err := st.Get(project); err != nil || !ok {
-		t.Fatal("failed Prune removed record from in-memory store")
 	}
 }
