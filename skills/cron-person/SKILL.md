@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-03 17:05
+  last_modified: 2026-11-03 17:11
   status: current
 ---
 
@@ -60,7 +60,7 @@ cron-person task log --follow <run-id>
 
 These apply to every command.
 
-- `--store` (string, default empty): authorization store file. Empty selects `$XDG_STATE_HOME/cron-person/allowed.json`, or `~/.local/state/cron-person/allowed.json` when `XDG_STATE_HOME` is unset or relative. Run history lives in `runs/` beside the store. A successful `allow` or `deny` is flushed to disk before it returns; an interrupted one leaves the previous store intact, and the next change deletes the `<store>.<random>.tmp` files it abandoned.
+- `--store` (string, default empty): authorization store file. Empty selects `$XDG_STATE_HOME/cron-person/allowed.json`, or `~/.local/state/cron-person/allowed.json` when `XDG_STATE_HOME` is unset or relative. Run history lives in `runs/` beside the store. A successful `allow` or `deny` is flushed to disk before it returns, except where the file system cannot flush directories (some network and FUSE mounts), which is not treated as a failure; an interrupted one leaves the previous store intact, and the next change deletes the `<store>.<random>.tmp` files it abandoned.
 - `--config` (string, default empty): configuration file. Empty selects `$XDG_CONFIG_HOME/cron-person/config.json`, or `~/.config/cron-person/config.json`.
 - `--help`, `-h` (bool): print help for the command and its subcommands.
 - `--version`, `-v` (bool): print the bare version string.

@@ -210,8 +210,10 @@ func createDirDurably(dir string) error {
 	return nil
 }
 
-// tempFileSuffix is the os.CreateTemp pattern for staged store writes; the
-// random part is a decimal number.
+// tempFileSuffix is the os.CreateTemp pattern for staged store writes. The
+// random part is not documented; removeStaleTempFilesLocked matches the
+// digits os.CreateTemp currently produces, and a test stages a file exactly
+// as a save does to catch a change.
 const tempFileSuffix = ".*.tmp"
 
 // removeStaleTempFilesLocked deletes staged writes left by writers that died
