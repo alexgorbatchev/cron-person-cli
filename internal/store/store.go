@@ -290,7 +290,13 @@ func (s *Store) Deny(dir string) error {
 			return err
 		}
 		next := s.cloneRecordsLocked()
-		delete(next, absDir)
+		// Hand-edited entries whose key only resolves to absDir (a trailing
+		// slash, say) go too, since no other command can address them.
+		for key := range next {
+			if resolved, err := filepath.Abs(key); key == absDir || (err == nil && resolved == absDir) {
+				delete(next, key)
+			}
+		}
 		return s.saveRecordsLocked(next)
 	})
 }
@@ -457,7 +463,7 @@ func (s *Store) Schedulable() ([]Directory, []Skipped, error) {
 // returns nil when they may.
 func (in Inspection) problem() error {
 	if abs, err := filepath.Abs(in.Record.Dir); err == nil && abs != in.Record.Dir {
-		return fmt.Errorf("store entry is not the canonical path %s: run 'cron-person allow %s' to approve the directory", abs, abs)
+		return fmt.Errorf("store entry %q is not the canonical path %s: run 'cron-person deny %s' to remove it, then allow the directory again", in.Record.Dir, abs, abs)
 	}
 	if strings.ContainsAny(in.Record.Dir, unschedulablePathChars) {
 		return errors.New("directory path contains a line break or NUL, which a crontab entry cannot hold")

@@ -213,3 +213,35 @@ func TestAggregateCommandsSkipBrokenDirectories(t *testing.T) {
 		}
 	}
 }
+
+// A path with a line break, approved before such paths were refused, must not
+// split its warning across lines.
+func TestSkippedWarningsStayOnOneLine(t *testing.T) {
+	for _, mode := range []struct{ agent, prefix string }{{"0", "[WARN] "}, {"1", "WARN: "}} {
+		t.Run("agent="+mode.agent, func(t *testing.T) {
+			t.Setenv("AGENT", mode.agent)
+			home := t.TempDir()
+			t.Setenv("HOME", home)
+			project := filepath.Join(home, "line\nbreak")
+			if err := os.Mkdir(project, 0o700); err != nil {
+				t.Fatal(err)
+			}
+			content := "@daily true\n"
+			writeCLIFile(t, filepath.Join(project, ".cronrc"), content)
+			state := filepath.Join(home, "state.json")
+			data, err := json.Marshal([]store.Record{{Dir: project, Path: filepath.Join(project, ".cronrc"), Hash: cronrc.ComputeHash([]byte(content))}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			writeCLIFile(t, state, string(data))
+			var stdout, stderr bytes.Buffer
+			if code := run([]string{"--store", state, "task", "list"}, &stdout, &stderr); code != 0 {
+				t.Fatalf("exit %d, stderr %q", code, stderr.String())
+			}
+			want := mode.prefix + `skipped ~/line\nbreak: directory path contains a line break or NUL, which a crontab entry cannot hold`
+			if stderr.String() != want+"\n" {
+				t.Fatalf("stderr %q, want %q", stderr.String(), want+"\n")
+			}
+		})
+	}
+}

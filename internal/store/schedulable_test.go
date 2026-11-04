@@ -67,8 +67,8 @@ func TestSchedulableSplitsReadyAndSkippedDirectories(t *testing.T) {
 		"orphan":                ".cronrc no longer exists",
 		"special":               ".cronrc is not a regular file",
 		"malformed":             "parsing " + filepath.Join(dir, "malformed", ".cronrc") + ": line 1:",
-		"noncanonical/":         "store entry is not the canonical path " + filepath.Join(dir, "noncanonical") + ": run 'cron-person allow",
-		"removed-noncanonical/": "store entry is not the canonical path " + filepath.Join(dir, "removed-noncanonical"),
+		"noncanonical/":         "is not the canonical path " + filepath.Join(dir, "noncanonical") + ": run 'cron-person deny",
+		"removed-noncanonical/": "is not the canonical path " + filepath.Join(dir, "removed-noncanonical"),
 		"line\nbreak":           "directory path contains a line break or NUL",
 	}
 	if len(skipped) != len(want) {
@@ -78,6 +78,20 @@ func TestSchedulableSplitsReadyAndSkippedDirectories(t *testing.T) {
 		name := strings.TrimPrefix(s.Record.Dir, dir+string(filepath.Separator))
 		if w, ok := want[name]; !ok || !strings.Contains(s.Problem.Error(), w) {
 			t.Errorf("%s: problem %v, want %q", name, s.Problem, w)
+		}
+	}
+
+	// The remedy the warning names removes the entry it warns about.
+	if err := st.Deny(filepath.Join(dir, "noncanonical")); err != nil {
+		t.Fatal(err)
+	}
+	_, skipped, err = st.Schedulable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range skipped {
+		if s.Record.Dir == filepath.Join(dir, "noncanonical")+"/" {
+			t.Fatalf("deny left the non-canonical entry: %+v", s)
 		}
 	}
 

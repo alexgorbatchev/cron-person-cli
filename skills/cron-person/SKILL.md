@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-03 16:42
+  last_modified: 2026-11-03 16:48
   status: current
 ---
 
@@ -25,7 +25,7 @@ A `.cronrc` uses crontab syntax: `NAME=value` lines define environment variables
 
 A `.cronrc` must be a regular file (symlinks are followed) of at most 1 MiB. Other file types named `.cronrc` (directory, FIFO, device) count as no `.cronrc`, and larger files are rejected. A task command cannot contain a carriage return or NUL, and `allow` refuses a directory whose path contains a line break or NUL, because a crontab entry is a single line.
 
-Commands over every tracked directory (`status`, `task list`, `crontab show`, `crontab sync`) leave out any directory whose tasks cannot run (its `.cronrc` changed since approval, was removed, is not a regular file, cannot be read, or no longer parses; its path contains a line break; or its store entry is not the directory's canonical path) and name each one on stderr as `[WARN] skipped <dir>: <reason>` (`WARN: ...` in agent mode), then report or install the remaining directories and exit 0.
+Commands over every tracked directory (`status`, `task list`, `crontab show`, `crontab sync`) leave out any directory whose tasks cannot run (its `.cronrc` changed since approval, was removed, is not a regular file, cannot be read, or no longer parses; its path contains a line break; or its store entry is not the directory's canonical path, which `cron-person deny <dir>` removes) and name each one on stderr as `[WARN] skipped <dir>: <reason>` (`WARN: ...` in agent mode), then report or install the remaining directories and exit 0.
 
 ## Workflows
 
@@ -102,7 +102,7 @@ Authorizes the `.cronrc` in `path`, recording its SHA-256 hash. Without `path`, 
 
 ### `cron-person deny [path]` / `cron-person dir deny [path]`
 
-Revokes authorization for the directory, resolved like `allow`. Its tasks stop running and are dropped from the crontab on the next sync. Agent output: `dir`, `status: denied`. Writes the store.
+Revokes authorization for the directory, resolved like `allow`, and removes hand-edited store entries that resolve to the same directory. Its tasks stop running and are dropped from the crontab on the next sync. Agent output: `dir`, `status: denied`. Writes the store.
 
 ### `cron-person dir list`
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/cron-person-cli/internal/config"
@@ -103,9 +104,14 @@ func newCrontabShowCommand() *cobra.Command {
 // stderr, so a shorter result is never silent.
 func warnSkipped(cmd *cobra.Command, skipped []store.Skipped) {
 	for _, s := range skipped {
-		writeWarning(cmd, fmt.Sprintf("skipped %s: %s", display.Path(s.Record.Dir), display.Error(s.Problem)))
+		warning := fmt.Sprintf("skipped %s: %s", display.Path(s.Record.Dir), display.Error(s.Problem))
+		writeWarning(cmd, singleLine.Replace(warning))
 	}
 }
+
+// singleLine escapes the characters a path may carry that would split a
+// warning across lines.
+var singleLine = strings.NewReplacer("\r", `\r`, "\n", `\n`, "\x00", `\x00`)
 
 func newCrontabUninstallCommand() *cobra.Command {
 	return &cobra.Command{
