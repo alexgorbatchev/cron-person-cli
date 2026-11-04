@@ -256,7 +256,7 @@ Run `cron-person crontab sync` after moving the configuration file so scheduled 
 
 ## Release Acceptance
 
-Pushing a `v*` tag runs `.github/workflows/release.yml`: a `verify` job (module hygiene, build, vet, tests), then GoReleaser in a `release` job that only starts once `verify` succeeds. After it finishes, run `just verify-release <tag>`, which only reads from GitHub. It checks that:
+Pushing a `v*` tag runs `.github/workflows/release.yml`: a `verify` job (module hygiene, build, vet, race-enabled tests with the per-package coverage gate, and a `govulncheck` scan), then GoReleaser in a `release` job that only starts once `verify` succeeds. After it finishes, run `just verify-release <tag>`, which only reads from GitHub. It checks that:
 
 - the tag's newest release run succeeded, and its `release` job started after `verify` completed;
 - the tag has a published release (drafts are not published, so they fail here) holding exactly the versioned and unversioned archives `.goreleaser.yml` describes, plus `checksums.txt`;

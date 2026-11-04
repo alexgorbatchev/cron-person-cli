@@ -46,3 +46,8 @@ jobs:
 
       - name: Enforce per-package coverage
         run: go tool go-test-coverage --config=.testcoverage.yml
+
+      # Known vulnerabilities reachable from cron-person, in dependencies or
+      # the standard library of the toolchain go.mod selects, fail the job.
+      - name: Scan for known vulnerabilities
+        run: go tool govulncheck ./...

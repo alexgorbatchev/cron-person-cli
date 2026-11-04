@@ -2,6 +2,8 @@ module github.com/alexgorbatchev/cron-person-cli
 
 go 1.26.2
 
+toolchain go1.26.10
+
 require (
 	github.com/alexgorbatchev/cobra-help-tree/v4 v4.0.0
 	github.com/lnquy/cron v1.1.1
@@ -9,7 +11,7 @@ require (
 	github.com/robfig/cron/v3 v3.0.1
 	github.com/spf13/cobra v1.10.2
 	github.com/testcontainers/testcontainers-go v0.44.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/sys v0.49.0
 	golang.org/x/term v0.45.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -88,7 +90,14 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/crypto v0.54.0 // indirect
 	golang.org/x/image v0.41.0 // indirect
-	golang.org/x/tools v0.26.0 // indirect
+	golang.org/x/mod v0.42.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
+	golang.org/x/telemetry v0.0.0-20261010193011-f71dc92da45e // indirect
+	golang.org/x/tools v0.52.0 // indirect
+	golang.org/x/vuln v1.9.0 // indirect
 )
 
-tool github.com/vladopajic/go-test-coverage/v2
+tool (
+	github.com/vladopajic/go-test-coverage/v2
+	golang.org/x/vuln/cmd/govulncheck
+)

@@ -41,6 +41,10 @@ coverage:
     go test -race -covermode=atomic -coverprofile=.tmp/cover.out ./...
     go tool go-test-coverage --config=.testcoverage.yml
 
+# Check code, dependencies, and the standard library against the Go vulnerability database (needs network)
+vuln:
+    go tool govulncheck ./...
+
 # Build binary into bin/
 build:
     mkdir -p bin
