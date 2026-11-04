@@ -16,10 +16,10 @@ func syncDir(dir string) error {
 	if err != nil {
 		return err
 	}
-	syncErr := f.Sync()
+	syncErr := unlessUnsupported(f.Sync())
 	closeErr := f.Close()
 	if syncErr != nil {
-		return unlessUnsupported(syncErr)
+		return syncErr
 	}
 	return closeErr
 }
