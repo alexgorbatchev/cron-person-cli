@@ -49,5 +49,8 @@ jobs:
 
       # Known vulnerabilities reachable from cron-person, in dependencies or
       # the standard library of the toolchain go.mod selects, fail the job.
+      # govulncheck analyzes one operating system, so scan each released one.
       - name: Scan for known vulnerabilities
-        run: go tool govulncheck ./...
+        run: |
+          # Build the scanner for this machine, then point its analysis at each OS.
+          vc="$(go tool -n govulncheck)" && for goos in linux darwin windows; do echo "GOOS=$goos"; GOOS=$goos "$vc" -show version ./... || exit 1; done

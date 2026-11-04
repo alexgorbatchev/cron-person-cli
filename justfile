@@ -41,9 +41,9 @@ coverage:
     go test -race -covermode=atomic -coverprofile=.tmp/cover.out ./...
     go tool go-test-coverage --config=.testcoverage.yml
 
-# Check code, dependencies, and the standard library against the Go vulnerability database (needs network)
+# Check code, dependencies, and the standard library for every released OS against the Go vulnerability database (needs network)
 vuln:
-    go tool govulncheck ./...
+    vc="$(go tool -n govulncheck)" && for goos in linux darwin windows; do echo "GOOS=$goos"; GOOS=$goos "$vc" -show version ./... || exit 1; done
 
 # Build binary into bin/
 build:
