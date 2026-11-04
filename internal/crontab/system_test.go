@@ -117,9 +117,9 @@ func TestSyncAndUninstall(t *testing.T) {
 	writeCrontabFile(t, path, userJobs+"\n"+BlockStart+"\n@daily stale-job\n"+BlockEnd+"\n")
 	var first string
 	for i := range 2 {
-		count, err := Sync(st, "/opt/cron-person", testConfig)
-		if err != nil || count != 1 {
-			t.Fatalf("synced directories=%d error=%v", count, err)
+		count, skipped, err := Sync(st, "/opt/cron-person", testConfig)
+		if err != nil || count != 1 || len(skipped) != 2 {
+			t.Fatalf("synced directories=%d skipped=%+v error=%v", count, skipped, err)
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -162,7 +162,7 @@ func TestSyncAndUninstallFailures(t *testing.T) {
 					t.Setenv("TEST_CRONTAB_WRITE_ERROR", "write refused")
 				}
 				if operation == "sync" {
-					_, err = Sync(st, "cron-person", testConfig)
+					_, _, err = Sync(st, "cron-person", testConfig)
 				} else {
 					err = Uninstall(filepath.Dir(st.Path()))
 				}
@@ -178,9 +178,9 @@ func TestSyncAndUninstallFailures(t *testing.T) {
 	}
 }
 
-func TestGenerateBlockSkipsUnusableFiles(t *testing.T) {
+func TestGenerateBlockSkipsDirectoriesWithoutTasks(t *testing.T) {
 	dir := t.TempDir()
-	records := make([]store.Record, 0, 4)
+	records := make([]store.Record, 0, 2)
 	for _, tt := range []struct{ name, content string }{
 		{"empty", "ENV=only\n"},
 		{"valid", "@hourly run-active\n"},
@@ -189,9 +189,8 @@ func TestGenerateBlockSkipsUnusableFiles(t *testing.T) {
 		writeCrontabFile(t, path, tt.content)
 		records = append(records, store.Record{Dir: dir, Path: path})
 	}
-	records = append(records, store.Record{Dir: dir, Path: filepath.Join(dir, "missing")})
 	state := filepath.Join(dir, "state.json")
-	block, err := GenerateBlock(records, Invocation{Bin: "", Store: state, Config: testConfig})
+	block, err := GenerateBlock(directories(t, records...), Invocation{Bin: "", Store: state, Config: testConfig})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,26 +200,6 @@ func TestGenerateBlockSkipsUnusableFiles(t *testing.T) {
 	}
 	if !strings.Contains(block, "@hourly '"+exe+"' --store '"+state+"' --config '"+testConfig+"' exec '"+dir+"' -- 'run-active'") || strings.Count(block, "# Directory:") != 1 {
 		t.Fatalf("unexpected generated block: %s", block)
-	}
-}
-
-func TestGenerateBlockReportsConfigFailures(t *testing.T) {
-	for _, failure := range []string{"reading", "parsing"} {
-		t.Run(failure, func(t *testing.T) {
-			dir := t.TempDir()
-			path := filepath.Join(dir, ".cronrc")
-			if failure == "reading" {
-				if err := os.Symlink(".cronrc", path); err != nil {
-					t.Fatal(err)
-				}
-			} else {
-				writeCrontabFile(t, path, "invalid schedule\n")
-			}
-			block, err := GenerateBlock([]store.Record{{Dir: dir, Path: path}}, Invocation{Bin: "/opt/cron-person", Store: filepath.Join(dir, "state.json"), Config: testConfig})
-			if err == nil || !strings.Contains(err.Error(), failure+" "+path) || block != "" {
-				t.Fatalf("block=%q error=%v", block, err)
-			}
-		})
 	}
 }
 
@@ -266,7 +245,7 @@ func TestSyncAndUninstallPreserveMarkerSubstringsAndRejectMalformed(t *testing.T
 		t.Fatalf("Uninstall modified unmanaged marker substrings: got=%q want=%q err=%v", data, userJobs, err)
 	}
 
-	if count, err := Sync(st, "/opt/cron-person", testConfig); err != nil || count != 1 {
+	if count, _, err := Sync(st, "/opt/cron-person", testConfig); err != nil || count != 1 {
 		t.Fatalf("Sync count=%d err=%v", count, err)
 	}
 	syncedData, err := os.ReadFile(path)
@@ -291,7 +270,7 @@ func TestSyncAndUninstallPreserveMarkerSubstringsAndRejectMalformed(t *testing.T
 		BlockStart + "\n@hourly one\n" + BlockEnd + "\n@daily middle\n" + BlockStart + "\n@hourly two\n" + BlockEnd + "\n",
 	} {
 		writeCrontabFile(t, path, malformed)
-		if _, err := Sync(st, "/opt/cron-person", testConfig); err == nil {
+		if _, _, err := Sync(st, "/opt/cron-person", testConfig); err == nil {
 			t.Fatalf("expected Sync to reject malformed crontab %q", malformed)
 		}
 		if data, err := os.ReadFile(path); err != nil || string(data) != malformed {
@@ -344,7 +323,7 @@ func TestConcurrentUpdatesWaitForTheUpdateInFlight(t *testing.T) {
 
 	syncDone := make(chan error, 1)
 	go func() {
-		_, err := Sync(st, "/opt/cron-person", testConfig)
+		_, _, err := Sync(st, "/opt/cron-person", testConfig)
 		syncDone <- err
 	}()
 	waitForPath(t, reached)
@@ -383,7 +362,7 @@ func TestUpdatesOverwriteExternalEditsMadeInFlight(t *testing.T) {
 			done := make(chan error, 1)
 			go func() {
 				if operation == "sync" {
-					_, err := Sync(st, "/opt/cron-person", testConfig)
+					_, _, err := Sync(st, "/opt/cron-person", testConfig)
 					done <- err
 					return
 				}
@@ -413,7 +392,7 @@ func TestUpdatesReportUnavailableLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Sync(st, "/opt/cron-person", testConfig); err == nil || !strings.Contains(err.Error(), "locking crontab updates") {
+	if _, _, err := Sync(st, "/opt/cron-person", testConfig); err == nil || !strings.Contains(err.Error(), "locking crontab updates") {
 		t.Fatalf("sync error=%v", err)
 	}
 	if err := Uninstall(stateDir); err == nil || !strings.Contains(err.Error(), "locking crontab updates") {

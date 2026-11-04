@@ -61,7 +61,9 @@ func TestCLIHomePaths(t *testing.T) {
 func TestCommandsReportInspectionAndParseErrors(t *testing.T) {
 	for _, mode := range []string{"0", "1"} {
 		for _, failure := range []string{"inspection", "parsing"} {
-			for _, command := range [][]string{{"task", "list"}, {"dir", "list"}, {"dir", "status"}, {"status"}, {"crontab", "show"}, {"crontab", "sync"}} {
+			// Commands about one directory fail on it; commands over every
+			// directory skip it with a warning (TestAggregateCommandsSkipBrokenDirectories).
+			for _, command := range [][]string{{"dir", "list"}, {"dir", "status"}} {
 				if failure == "parsing" && strings.Join(command, " ") == "dir list" {
 					continue // Directory listings inspect authorization without parsing tasks.
 				}
@@ -108,6 +110,100 @@ func TestCommandsReportInspectionAndParseErrors(t *testing.T) {
 					}
 					if _, err := os.Stat(installed + ".calls"); !os.IsNotExist(err) {
 						t.Fatalf("failed command invoked crontab: %v", err)
+					}
+				})
+			}
+		}
+	}
+}
+
+// Commands over every tracked directory name each broken one on stderr and
+// still report, preview, or install the healthy directories.
+func TestAggregateCommandsSkipBrokenDirectories(t *testing.T) {
+	for _, mode := range []struct{ agent, prefix string }{{"0", "[WARN] "}, {"1", "WARN: "}} {
+		for _, failure := range []string{"unreadable", "malformed", "changed"} {
+			for _, command := range [][]string{{"task", "list"}, {"status"}, {"crontab", "show"}, {"crontab", "sync"}} {
+				t.Run(mode.agent+"/"+failure+"/"+strings.Join(command, " "), func(t *testing.T) {
+					t.Setenv("AGENT", mode.agent)
+					home := t.TempDir()
+					t.Setenv("HOME", home)
+					t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+					installed := cliCrontab(t)
+					writeCLIFile(t, installed, "@daily preserve-existing\n")
+					state := filepath.Join(home, "state.json")
+					healthy := filepath.Join(home, "healthy")
+					broken := filepath.Join(home, "broken")
+					for _, dir := range []string{healthy, broken} {
+						if err := os.Mkdir(dir, 0o700); err != nil {
+							t.Fatal(err)
+						}
+						writeCLIFile(t, filepath.Join(dir, ".cronrc"), "@daily printf "+filepath.Base(dir)+"\n")
+						requireCLIOutput(t, []string{"--store", state, "allow", dir})
+					}
+					brokenPath := filepath.Join(broken, ".cronrc")
+					var want string
+					switch failure {
+					case "unreadable":
+						if err := os.Remove(brokenPath); err != nil {
+							t.Fatal(err)
+						}
+						if err := os.Symlink(".cronrc", brokenPath); err != nil {
+							t.Fatal(err)
+						}
+						want = "skipped ~/broken: checking .cronrc"
+					case "malformed":
+						// Approve content the parser rejects, as a grammar change would.
+						content := "not a valid schedule\n"
+						writeCLIFile(t, brokenPath, content)
+						records := []store.Record{
+							{Dir: broken, Path: brokenPath, Hash: cronrc.ComputeHash([]byte(content))},
+							{Dir: healthy, Path: filepath.Join(healthy, ".cronrc"), Hash: cronrc.ComputeHash([]byte("@daily printf healthy\n"))},
+						}
+						data, err := json.Marshal(records)
+						if err != nil {
+							t.Fatal(err)
+						}
+						writeCLIFile(t, state, string(data))
+						want = "skipped ~/broken: parsing ~/broken/.cronrc: line 1:"
+					case "changed":
+						writeCLIFile(t, brokenPath, "@hourly printf edited\n")
+						want = "skipped ~/broken: .cronrc changed since it was allowed"
+					}
+
+					var stdout, stderr bytes.Buffer
+					if code := run(append([]string{"--store", state}, command...), &stdout, &stderr); code != 0 {
+						t.Fatalf("exit %d, stderr %q", code, stderr.String())
+					}
+					lines := strings.Split(strings.TrimSuffix(stderr.String(), "\n"), "\n")
+					if len(lines) != 1 || !strings.HasPrefix(lines[0], mode.prefix) || !strings.Contains(lines[0], want) {
+						t.Fatalf("stderr %q, want one %q warning containing %q", stderr.String(), mode.prefix, want)
+					}
+					if out := stdout.String(); strings.Contains(out, "printf broken") || strings.Contains(out, "printf edited") {
+						t.Fatalf("broken directory's tasks reported: %q", out)
+					}
+					switch strings.Join(command, " ") {
+					case "task list", "crontab show":
+						if !strings.Contains(stdout.String(), "printf healthy") {
+							t.Fatalf("healthy task missing: %q", stdout.String())
+						}
+					case "status":
+						if !strings.Contains(stdout.String(), modeText(mode.agent, "Tracked Directories:  2", "tracked_dirs: 2")) ||
+							!strings.Contains(stdout.String(), modeText(mode.agent, "Allowed Directories:  1", "allowed_dirs: 1")) {
+							t.Fatalf("status counts: %q", stdout.String())
+						}
+					case "crontab sync":
+						data, err := os.ReadFile(installed)
+						if err != nil || !strings.HasPrefix(string(data), "@daily preserve-existing\n") || !strings.Contains(string(data), "printf healthy") || strings.Contains(string(data), "broken") {
+							t.Fatalf("installed crontab %q, %v; want the healthy directory only", data, err)
+						}
+						if mode.agent == "1" && !strings.Contains(stdout.String(), "skipped_directories: 1") {
+							t.Fatalf("agent output %q lacks the skipped count", stdout.String())
+						}
+					}
+					if strings.Join(command, " ") != "crontab sync" {
+						if _, err := os.Stat(installed + ".calls"); !os.IsNotExist(err) {
+							t.Fatalf("%v invoked crontab: %v", command, err)
+						}
 					}
 				})
 			}

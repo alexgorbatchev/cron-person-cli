@@ -1,15 +1,12 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
 	"github.com/alexgorbatchev/cron-person-cli/internal/display"
-	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -38,10 +35,11 @@ func newTaskListCommand() *cobra.Command {
 				return err
 			}
 
-			inspections, err := st.InspectAll()
+			ready, skipped, err := st.Schedulable()
 			if err != nil {
 				return err
 			}
+			warnSkipped(cmd, skipped)
 
 			type taskItem struct {
 				Dir         string
@@ -53,20 +51,8 @@ func newTaskListCommand() *cobra.Command {
 			}
 
 			var tasks []taskItem
-			for _, in := range inspections {
-				rec, status, snapshot, err := in.Record, in.Status, in.Snapshot, in.Err
-				if err != nil {
-					return fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
-				}
-				if status != store.StatusAllowed {
-					continue
-				}
-
-				path := filepath.Join(rec.Dir, ".cronrc")
-				parsed, err := cronrc.Parse(bytes.NewReader(snapshot), path)
-				if err != nil {
-					return fmt.Errorf("parsing %s: %w", path, err)
-				}
+			for _, dir := range ready {
+				rec, parsed := dir.Record, dir.File
 
 				for _, t := range parsed.Tasks {
 					description, err := cronrc.DescribeSchedule(t.Schedule)

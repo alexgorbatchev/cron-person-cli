@@ -8,6 +8,8 @@ import (
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/cron-person-cli/internal/config"
 	"github.com/alexgorbatchev/cron-person-cli/internal/crontab"
+	"github.com/alexgorbatchev/cron-person-cli/internal/display"
+	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -50,13 +52,14 @@ func newCrontabSyncCommand() *cobra.Command {
 				return fmt.Errorf("fix the configuration before syncing: %w", err)
 			}
 
-			count, err := crontab.Sync(st, exePath, configPath)
+			count, skipped, err := crontab.Sync(st, exePath, configPath)
 			if err != nil {
 				return fmt.Errorf("syncing crontab: %w", err)
 			}
+			warnSkipped(cmd, skipped)
 
 			if cobrahelptree.IsAgentMode() {
-				return writeOutput(cmd, fmt.Sprintf("synced_directories: %d\nstatus: success\n", count))
+				return writeOutput(cmd, fmt.Sprintf("synced_directories: %d\nskipped_directories: %d\nstatus: success\n", count, len(skipped)))
 			}
 
 			return writeOutput(cmd, fmt.Sprintf("[OK] Synchronized %d authorized directory task(s) into crontab\n", count))
@@ -85,13 +88,22 @@ func newCrontabShowCommand() *cobra.Command {
 				return err
 			}
 
-			block, _, err := crontab.Preview(st, exePath, configPath)
+			block, _, skipped, err := crontab.Preview(st, exePath, configPath)
 			if err != nil {
 				return err
 			}
+			warnSkipped(cmd, skipped)
 
 			return writeOutput(cmd, block+"\n")
 		},
+	}
+}
+
+// warnSkipped names each tracked directory a command left out, and why, on
+// stderr, so a shorter result is never silent.
+func warnSkipped(cmd *cobra.Command, skipped []store.Skipped) {
+	for _, s := range skipped {
+		writeWarning(cmd, fmt.Sprintf("skipped %s: %s", display.Path(s.Record.Dir), display.Error(s.Problem)))
 	}
 }
 

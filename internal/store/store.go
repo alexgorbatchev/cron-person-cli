@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -405,6 +406,63 @@ func (s *Store) InspectAll() ([]Inspection, error) {
 		inspections = append(inspections, in)
 	}
 	return inspections, nil
+}
+
+// Directory is a tracked directory whose tasks may run, with its approved
+// .cronrc parsed from the snapshot its authorization was checked against.
+type Directory struct {
+	Record Record
+	File   *cronrc.File
+}
+
+// Skipped is a tracked directory left out of scheduling, and why.
+type Skipped struct {
+	Record  Record
+	Problem error
+}
+
+// Schedulable inspects every tracked directory against one store load and
+// splits them into directories whose tasks may run and those left out, so
+// every command agrees on which tasks exist and can name what it omits.
+func (s *Store) Schedulable() ([]Directory, []Skipped, error) {
+	inspections, err := s.InspectAll()
+	if err != nil {
+		return nil, nil, err
+	}
+	var ready []Directory
+	var skipped []Skipped
+	for _, in := range inspections {
+		if problem := in.problem(); problem != nil {
+			skipped = append(skipped, Skipped{Record: in.Record, Problem: problem})
+			continue
+		}
+		file, err := cronrc.Parse(bytes.NewReader(in.Snapshot), in.Record.Path)
+		if err != nil {
+			skipped = append(skipped, Skipped{Record: in.Record, Problem: fmt.Errorf("parsing %s: %w", in.Record.Path, err)})
+			continue
+		}
+		ready = append(ready, Directory{Record: in.Record, File: file})
+	}
+	return ready, skipped, nil
+}
+
+// problem explains why an inspected directory's tasks may not run, or
+// returns nil when they may.
+func (in Inspection) problem() error {
+	switch {
+	case in.Err != nil:
+		return in.Err
+	case in.Status == StatusAllowed:
+		return nil
+	case in.Status == StatusChanged:
+		return fmt.Errorf(".cronrc changed since it was allowed: run 'cron-person allow %s' to approve it", in.Record.Dir)
+	case in.Status == StatusOrphan:
+		return errors.New(".cronrc no longer exists")
+	case in.Status == StatusMissingCronrc:
+		return errors.New(".cronrc is not a regular file")
+	default:
+		return fmt.Errorf("directory is %s", in.Status)
+	}
 }
 
 // classify compares a .cronrc read against rec, which is nil for an

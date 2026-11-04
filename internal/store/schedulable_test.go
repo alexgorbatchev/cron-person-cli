@@ -1,0 +1,84 @@
+package store
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+
+	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
+)
+
+func TestSchedulableSplitsReadyAndSkippedDirectories(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "allowed.json")
+	var records []Record
+	for _, name := range []string{"ready", "changed", "orphan", "special", "malformed", "noncanonical"} {
+		project := filepath.Join(dir, name)
+		if err := os.Mkdir(project, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		content := "@daily " + name + "\n"
+		if name == "malformed" {
+			// Approved content the parser rejects, as after a grammar change.
+			content = "not a schedule\n"
+		}
+		cronrcPath := filepath.Join(project, ".cronrc")
+		writeStoreFile(t, cronrcPath, content)
+		key := project
+		if name == "noncanonical" {
+			key = project + "/"
+		}
+		records = append(records, Record{Dir: key, Path: cronrcPath, Hash: cronrc.ComputeHash([]byte(content))})
+	}
+	data, err := json.Marshal(records)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeStoreFile(t, path, string(data))
+	writeStoreFile(t, filepath.Join(dir, "changed", ".cronrc"), "@daily edited\n")
+	if err := os.Remove(filepath.Join(dir, "orphan", ".cronrc")); err != nil {
+		t.Fatal(err)
+	}
+	special := filepath.Join(dir, "special", ".cronrc")
+	if err := os.Remove(special); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(special, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	st, err := NewStore(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ready, skipped, err := st.Schedulable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(ready) != 1 || filepath.Base(ready[0].Record.Dir) != "ready" || len(ready[0].File.Tasks) != 1 || ready[0].File.Tasks[0].Command != "ready" {
+		t.Fatalf("ready = %+v", ready)
+	}
+	want := map[string]string{
+		"changed":       ".cronrc changed since it was allowed: run 'cron-person allow " + filepath.Join(dir, "changed") + "'",
+		"orphan":        ".cronrc no longer exists",
+		"special":       ".cronrc is not a regular file",
+		"malformed":     "parsing " + filepath.Join(dir, "malformed", ".cronrc") + ": line 1:",
+		"noncanonical/": "directory is unauthorized",
+	}
+	if len(skipped) != len(want) {
+		t.Fatalf("skipped %d directories, want %d: %+v", len(skipped), len(want), skipped)
+	}
+	for _, s := range skipped {
+		name := strings.TrimPrefix(s.Record.Dir, dir+string(filepath.Separator))
+		if w, ok := want[name]; !ok || !strings.Contains(s.Problem.Error(), w) {
+			t.Errorf("%s: problem %v, want %q", name, s.Problem, w)
+		}
+	}
+
+	writeStoreFile(t, path, "{")
+	if _, _, err := st.Schedulable(); err == nil {
+		t.Fatal("corrupt store accepted")
+	}
+}

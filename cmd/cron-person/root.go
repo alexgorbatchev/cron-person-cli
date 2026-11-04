@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +8,6 @@ import (
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/cron-person-cli/internal/config"
-	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
 	"github.com/alexgorbatchev/cron-person-cli/internal/display"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 	"github.com/spf13/cobra"
@@ -123,27 +121,14 @@ func newRootStatusCommand() *cobra.Command {
 				return err
 			}
 
-			inspections, err := st.InspectAll()
+			ready, skipped, err := st.Schedulable()
 			if err != nil {
 				return err
 			}
-			allowedCount := 0
-			totalTasks := 0
-
-			for _, in := range inspections {
-				rec, status, snapshot, err := in.Record, in.Status, in.Snapshot, in.Err
-				if err != nil {
-					return fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
-				}
-				if status == store.StatusAllowed {
-					allowedCount++
-					path := filepath.Join(rec.Dir, ".cronrc")
-					parsed, err := cronrc.Parse(bytes.NewReader(snapshot), path)
-					if err != nil {
-						return fmt.Errorf("parsing %s: %w", path, err)
-					}
-					totalTasks += len(parsed.Tasks)
-				}
+			warnSkipped(cmd, skipped)
+			tracked, allowedCount, totalTasks := len(ready)+len(skipped), len(ready), 0
+			for _, dir := range ready {
+				totalTasks += len(dir.File.Tasks)
 			}
 
 			configPath, err := getConfigPath(cmd)
@@ -155,7 +140,7 @@ func newRootStatusCommand() *cobra.Command {
 			var out strings.Builder
 			if cobrahelptree.IsAgentMode() {
 				fmt.Fprintln(&out, "version: "+version)
-				fmt.Fprintf(&out, "tracked_dirs: %d\n", len(inspections))
+				fmt.Fprintf(&out, "tracked_dirs: %d\n", tracked)
 				fmt.Fprintf(&out, "allowed_dirs: %d\n", allowedCount)
 				fmt.Fprintf(&out, "total_tasks: %d\n", totalTasks)
 				fmt.Fprintf(&out, "config: %s\n", display.Path(configPath))
@@ -172,7 +157,7 @@ func newRootStatusCommand() *cobra.Command {
 				fmt.Fprintln(&out, "[OK] cron-person system status: active")
 			}
 			fmt.Fprintf(&out, "  Version:              %s\n", version)
-			fmt.Fprintf(&out, "  Tracked Directories:  %d\n", len(inspections))
+			fmt.Fprintf(&out, "  Tracked Directories:  %d\n", tracked)
 			fmt.Fprintf(&out, "  Allowed Directories:  %d\n", allowedCount)
 			fmt.Fprintf(&out, "  Active Tasks:         %d\n", totalTasks)
 			fmt.Fprintf(&out, "  Configuration:        %s (%s)\n", display.Path(configPath), configState)

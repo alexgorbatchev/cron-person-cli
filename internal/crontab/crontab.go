@@ -2,15 +2,12 @@ package crontab
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
 	"github.com/alexgorbatchev/cron-person-cli/internal/filelock"
 	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 )
@@ -29,8 +26,9 @@ type Invocation struct {
 	Config string
 }
 
-// GenerateBlock builds the managed crontab string from all authorized records.
-func GenerateBlock(records []store.Record, inv Invocation) (string, error) {
+// GenerateBlock builds the managed crontab string from the approved, parsed
+// snapshots of schedulable directories; it never rereads a .cronrc.
+func GenerateBlock(dirs []store.Directory, inv Invocation) (string, error) {
 	binPath := inv.Bin
 	storePath, err := absRequired(inv.Store, "authorization store")
 	if err != nil {
@@ -56,27 +54,11 @@ func GenerateBlock(records []store.Record, inv Invocation) (string, error) {
 	sb.WriteString(BlockStart)
 	sb.WriteString("\n")
 
-	for _, rec := range records {
+	for _, dir := range dirs {
+		rec, parsed := dir.Record, dir.File
 		if strings.TrimSpace(rec.Dir) == "" || strings.ContainsAny(rec.Dir, "\r\n\x00") {
 			return "", fmt.Errorf("directory path must not be empty or contain line breaks or NUL")
 		}
-		data, err := cronrc.ReadFile(rec.Path)
-		if errors.Is(err, fs.ErrNotExist) || errors.Is(err, cronrc.ErrNotRegular) {
-			// A removed or replaced configuration is no longer eligible for
-			// scheduling.
-			continue
-		}
-		if err != nil {
-			return "", fmt.Errorf("reading %s: %w", rec.Path, err)
-		}
-		if rec.Hash != "" && cronrc.ComputeHash(data) != rec.Hash {
-			continue
-		}
-		parsed, err := cronrc.Parse(bytes.NewReader(data), rec.Path)
-		if err != nil {
-			return "", fmt.Errorf("parsing %s: %w", rec.Path, err)
-		}
-
 		if len(parsed.Tasks) == 0 {
 			continue
 		}
@@ -234,56 +216,48 @@ func WriteSystemCrontab(content string) error {
 	return nil
 }
 
-// Preview generates the managed block and counts eligible directories without installing it.
-func Preview(st *store.Store, binPath, configPath string) (string, int, error) {
-	inspections, err := st.InspectAll()
+// Preview generates the managed block from the schedulable directories and
+// returns the tracked directories it left out, so callers can name them.
+func Preview(st *store.Store, binPath, configPath string) (block string, scheduled int, skipped []store.Skipped, err error) {
+	ready, skipped, err := st.Schedulable()
 	if err != nil {
-		return "", 0, err
+		return "", 0, nil, err
 	}
-	validRecords := make([]store.Record, 0, len(inspections))
-
-	for _, in := range inspections {
-		if in.Err != nil {
-			return "", 0, fmt.Errorf("checking authorization for %s: %w", in.Record.Dir, in.Err)
-		}
-		if in.Status == store.StatusAllowed {
-			validRecords = append(validRecords, in.Record)
-		}
-	}
-
-	managedBlock, err := GenerateBlock(validRecords, Invocation{Bin: binPath, Store: st.Path(), Config: configPath})
+	block, err = GenerateBlock(ready, Invocation{Bin: binPath, Store: st.Path(), Config: configPath})
 	if err != nil {
-		return "", 0, fmt.Errorf("generating managed crontab block: %w", err)
+		return "", 0, nil, fmt.Errorf("generating managed crontab block: %w", err)
 	}
-	return managedBlock, len(validRecords), nil
+	return block, len(ready), skipped, nil
 }
 
-// Sync reads the store, generates the managed block, and updates the system crontab.
-func Sync(st *store.Store, binPath, configPath string) (int, error) {
+// Sync installs the managed block for every schedulable directory and returns
+// how many were scheduled and which tracked directories were left out. A
+// directory left out loses its installed entries, which could not run.
+func Sync(st *store.Store, binPath, configPath string) (int, []store.Skipped, error) {
 	release, err := lockUpdates(filepath.Dir(st.Path()))
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	defer release() // Best effort: the update already succeeded or failed.
 
-	managedBlock, count, err := Preview(st, binPath, configPath)
+	managedBlock, count, skipped, err := Preview(st, binPath, configPath)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	existing, err := ReadSystemCrontab()
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
 	updated, err := MergeCrontab(existing, managedBlock)
 	if err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 	if err := WriteSystemCrontab(updated); err != nil {
-		return 0, err
+		return 0, nil, err
 	}
 
-	return count, nil
+	return count, skipped, nil
 }
 
 // Uninstall removes the managed block from the system crontab. It needs only
