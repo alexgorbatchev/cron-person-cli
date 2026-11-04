@@ -11,6 +11,7 @@ import (
 func TestRunPropagatesTaskExitStatus(t *testing.T) {
 	t.Setenv("AGENT", "0")
 	t.Setenv("SHELL", "/bin/sh")
+	privateHome(t)
 	tmp := t.TempDir()
 	state := filepath.Join(tmp, "state", "allowed.json")
 	project := filepath.Join(tmp, "project")
@@ -41,8 +42,10 @@ func TestRunPropagatesTaskExitStatus(t *testing.T) {
 			stdout.Reset()
 			stderr.Reset()
 			code := run(append([]string{"--store", state}, tt.args...), &stdout, &stderr)
-			if code != tt.want || !strings.Contains(stderr.String(), tt.wantErr) {
-				t.Fatalf("exit %d, stderr %q; want %d containing %q", code, stderr.String(), tt.want, tt.wantErr)
+			// A configuration warning here would mean the developer's own
+			// configuration leaked into the run.
+			if code != tt.want || !strings.Contains(stderr.String(), tt.wantErr) || strings.Contains(stderr.String(), "[WARN]") {
+				t.Fatalf("exit %d, stderr %q; want %d containing %q and no warning", code, stderr.String(), tt.want, tt.wantErr)
 			}
 		})
 	}

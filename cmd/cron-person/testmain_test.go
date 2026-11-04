@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -26,4 +27,15 @@ func TestMain(m *testing.M) {
 	}
 	os.Stdin = devNull
 	os.Exit(m.Run())
+}
+
+// privateHome points HOME and the XDG configuration and state directories at
+// a temporary directory, so default paths never reach the developer's files.
+func privateHome(t *testing.T) string {
+	t.Helper()
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
+	t.Setenv("XDG_STATE_HOME", filepath.Join(home, ".local", "state"))
+	return home
 }

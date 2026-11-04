@@ -204,11 +204,18 @@ func TestCLIOutputWriteFailures(t *testing.T) {
 			t.Fatalf("build: %v: %s", err, out)
 		}
 		state := filepath.Join(t.TempDir(), "state.json")
-		for _, mode := range []string{"0", "1"} {
+		privateHome(t)
+		for _, mode := range []struct{ agent, prefix string }{{"0", "[ERROR] "}, {"1", "ERR: "}} {
 			shCmd := exec.Command("/bin/sh", "-c", "'"+strings.ReplaceAll(bin, "'", `'"'"'`)+"' --store '"+strings.ReplaceAll(state, "'", `'"'"'`)+"' status > /dev/full")
-			shCmd.Env = append(os.Environ(), "AGENT="+mode)
+			shCmd.Env = append(os.Environ(), "AGENT="+mode.agent)
+			var stderr bytes.Buffer
+			shCmd.Stderr = &stderr
 			if err := shCmd.Run(); err == nil {
-				t.Fatalf("expected non-zero exit when writing status to /dev/full in AGENT=%s", mode)
+				t.Fatalf("expected non-zero exit when writing status to /dev/full in AGENT=%s", mode.agent)
+			}
+			lines := strings.Split(strings.TrimSuffix(stderr.String(), "\n"), "\n")
+			if len(lines) != 1 || !strings.HasPrefix(lines[0], mode.prefix) || !strings.Contains(lines[0], "no space left on device") {
+				t.Fatalf("AGENT=%s stderr %q, want one %q line about the full device", mode.agent, stderr.String(), mode.prefix)
 			}
 		}
 	}
