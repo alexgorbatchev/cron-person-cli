@@ -29,13 +29,13 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-// privateHome points HOME and the XDG configuration and state directories at
-// a temporary directory, so default paths never reach the developer's files.
-func privateHome(t *testing.T) string {
+// privateHome points HOME and the XDG configuration and state directories,
+// for this process and the processes it starts, at a temporary directory, so
+// default paths never reach the developer's files.
+func privateHome(t *testing.T) {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("XDG_CONFIG_HOME", filepath.Join(home, ".config"))
 	t.Setenv("XDG_STATE_HOME", filepath.Join(home, ".local", "state"))
-	return home
 }

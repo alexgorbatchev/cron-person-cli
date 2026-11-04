@@ -20,11 +20,8 @@ func runProcess(t *testing.T, stdout *os.File, args ...string) (code int, out, e
 		t.Fatal(err)
 	}
 	cmd := exec.Command(exe, args...)
-	// A private home keeps the default configuration and state away from
-	// the developer's.
-	home := t.TempDir()
-	cmd.Env = append(os.Environ(), "AGENT=0", "SHELL=/bin/sh", "HOME="+home,
-		"XDG_CONFIG_HOME="+filepath.Join(home, ".config"), "XDG_STATE_HOME="+filepath.Join(home, ".local", "state"))
+	privateHome(t)
+	cmd.Env = append(os.Environ(), "AGENT=0", "SHELL=/bin/sh")
 	var outBuf, errBuf bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &outBuf, &errBuf
 	if stdout != nil {
