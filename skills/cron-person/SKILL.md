@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-03 16:48
+  last_modified: 2026-11-03 16:56
   status: current
 ---
 
@@ -25,7 +25,7 @@ A `.cronrc` uses crontab syntax: `NAME=value` lines define environment variables
 
 A `.cronrc` must be a regular file (symlinks are followed) of at most 1 MiB. Other file types named `.cronrc` (directory, FIFO, device) count as no `.cronrc`, and larger files are rejected. A task command cannot contain a carriage return or NUL, and `allow` refuses a directory whose path contains a line break or NUL, because a crontab entry is a single line.
 
-Commands over every tracked directory (`status`, `task list`, `crontab show`, `crontab sync`) leave out any directory whose tasks cannot run (its `.cronrc` changed since approval, was removed, is not a regular file, cannot be read, or no longer parses; its path contains a line break; or its store entry is not the directory's canonical path, which `cron-person deny <dir>` removes) and name each one on stderr as `[WARN] skipped <dir>: <reason>` (`WARN: ...` in agent mode), then report or install the remaining directories and exit 0.
+Commands over every tracked directory leave out any directory whose tasks cannot run (its `.cronrc` changed since approval, was removed, is not a regular file, cannot be read, or no longer parses; its path contains a line break; or its store entry is not the directory's canonical path, which `cron-person deny <dir>` removes) and report or install the remaining directories and exit 0. `task list`, `crontab show`, and `crontab sync` name each skipped directory on stderr as `[WARN] skipped <dir>: <reason>` (`WARN: ...` in agent mode); `status` shows the reason on that directory's row instead.
 
 ## Workflows
 
@@ -104,10 +104,6 @@ Authorizes the `.cronrc` in `path`, recording its SHA-256 hash. Without `path`, 
 
 Revokes authorization for the directory, resolved like `allow`, and removes hand-edited store entries that resolve to the same directory. Its tasks stop running and are dropped from the crontab on the next sync. Agent output: `dir`, `status: denied`. Writes the store.
 
-### `cron-person dir list`
-
-Lists tracked directories with their status: `allowed`, `changed` (the `.cronrc` no longer matches its approved hash), `unauthorized`, `missing_cronrc`, or `orphan` (the directory is gone). Agent output: one tab-separated line per directory with `dir`, `status`, and `hash`.
-
 ### `cron-person dir check [path]`
 
 Parses the `.cronrc` in `path` (resolved like `allow`) and reports its tasks and environment variables without changing anything. Agent output: `path`, `tasks_count`, `hash`.
@@ -118,7 +114,7 @@ Shows authorization status, recorded hash, approval time, and tasks for one dire
 
 ### `cron-person status`
 
-Summarizes the installation and the configuration file's state: `defaults` (no file), `loaded`, or `invalid` with the reason. Directories whose tasks cannot run are counted as tracked but not allowed and named on stderr. Agent output: `version`, `tracked_dirs`, `allowed_dirs`, `total_tasks`, `config`, `config_status`, and `config_error` when invalid.
+Summarizes the installation and the configuration file's state (`defaults` when there is no file, `loaded`, or `invalid` with the reason), then lists every tracked directory with its status and hash: `allowed` with its task count, or, for a directory whose tasks cannot run, `changed` (the `.cronrc` no longer matches its approved hash), `orphan` (the `.cronrc` is gone), `missing_cronrc` (not a regular file), `unauthorized` (a store entry that is not the canonical path), `unreadable`, or `invalid` (no longer parses, or the path cannot be scheduled), with the reason. Agent output: `version`, `tracked_dirs`, `allowed_dirs`, `total_tasks`, `config`, `config_status`, `config_error` when invalid, then one tab-separated line per directory with `dir`, `status`, `hash`, and `tasks` or `problem`.
 
 ### `cron-person crontab sync`
 

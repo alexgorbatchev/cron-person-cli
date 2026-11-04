@@ -11,10 +11,7 @@ import (
 )
 
 func newTaskCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "task",
-		Short: "Inspect and trigger scheduled tasks",
-	}
+	cmd := newGroupCommand("task", "Inspect and trigger scheduled tasks")
 
 	cmd.AddCommand(newTaskListCommand())
 	cmd.AddCommand(newTaskRunCommand())

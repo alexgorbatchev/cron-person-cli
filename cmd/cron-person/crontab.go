@@ -15,10 +15,7 @@ import (
 )
 
 func newCrontabCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "crontab",
-		Short: "Synchronize and inspect system crontab integration",
-	}
+	cmd := newGroupCommand("crontab", "Synchronize and inspect system crontab integration")
 
 	cmd.AddCommand(newCrontabSyncCommand())
 	cmd.AddCommand(newCrontabShowCommand())

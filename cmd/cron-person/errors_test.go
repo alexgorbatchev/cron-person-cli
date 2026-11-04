@@ -13,7 +13,7 @@ import (
 
 func TestCLICorruptStoreErrors(t *testing.T) {
 	for _, args := range [][]string{
-		{"allow"}, {"deny"}, {"dir", "list"}, {"dir", "status"},
+		{"allow"}, {"deny"}, {"dir", "status"},
 		{"task", "list"}, {"task", "run", ".", "true"},
 		{"exec", ".", "true"}, {"crontab", "sync"}, {"crontab", "show"},
 		{"hook", "export"}, {"status"},
@@ -106,7 +106,7 @@ func TestCLIDirectoryFailures(t *testing.T) {
 func TestCLIArgumentErrors(t *testing.T) {
 	for _, args := range [][]string{
 		{"allow", "one", "two"}, {"deny", "one", "two"},
-		{"dir", "list", "extra"}, {"dir", "status", "one", "two"},
+		{"dir", "list"}, {"task", "unknown"}, {"crontab", "unknown"}, {"dir", "status", "one", "two"},
 		{"dir", "check", "one", "two"}, {"task", "run"},
 		{"exec", "."}, {"exec", ".", "--", "--"},
 		{"hook", "unsupported"}, {"hook"}, {"hook", "export", "one", "two"},
@@ -148,7 +148,6 @@ func TestCLIOutputWriteFailures(t *testing.T) {
 			// Commands that write to stdout before any directory is allowed.
 			for _, args := range [][]string{
 				{"--store", state, "status"},
-				{"--store", state, "dir", "list"},
 				{"--store", state, "dir", "check", dir},
 				{"--store", state, "dir", "status", dir},
 				{"--store", state, "task", "list"},
@@ -167,7 +166,6 @@ func TestCLIOutputWriteFailures(t *testing.T) {
 			requireCLIOutput(t, []string{"--store", state, "allow", dir})
 			for _, args := range [][]string{
 				{"--store", state, "status"},
-				{"--store", state, "dir", "list"},
 				{"--store", state, "dir", "status", dir},
 				{"--store", state, "task", "list"},
 				{"--store", state, "deny", dir},

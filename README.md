@@ -38,7 +38,7 @@
 - **Refused and Interrupted Runs**: Runs refused by authorization checks are recorded as `blocked` with the reason. A run is listed as `interrupted` when its `cron-person` process ended without recording an outcome; liveness comes from a lock the operating system releases when that process exits, so a reused process ID cannot make a dead run look alive. If history cannot be written, the task still runs and `cron-person` exits with an error after it finishes.
 - **Invalid Configuration**: A configuration file that cannot be parsed never stops or fails a task. The run uses the default settings and records a warning, shown by `task history` and `task log`, so scheduled runs do not flood cron mail. Manual runs also print the warning, `cron-person status` reports it, and `cron-person crontab sync` refuses to install schedules until it is fixed.
 - **`.cronrc` Files**: A `.cronrc` must be a regular file (a symlink to one is followed) of at most 1 MiB. Any other file type named `.cronrc`, such as a directory, FIFO, or device, is treated as no `.cronrc` and never waited on, and a larger file is rejected by `allow` and reported as an error by commands that inspect it. A task command cannot contain a carriage return or NUL, and `allow` refuses a directory whose path contains a line break or NUL, because a crontab entry is a single line.
-- **Skipped Directories**: Commands over every tracked directory (`status`, `task list`, `crontab show`, `crontab sync`) leave out any directory whose tasks cannot run (its `.cronrc` changed since approval, was removed, is not a regular file, cannot be read, or no longer parses; its path contains a line break; or its store entry is not the directory's canonical path, which `cron-person deny <dir>` removes) and name each one on stderr as `[WARN] skipped <dir>: <reason>` (`WARN: ...` in agent mode), then report or install the remaining directories and exit 0. `crontab sync` therefore installs a partial block: a skipped directory loses its scheduled entries, which could not run anyway, until it is fixed and synced again.
+- **Skipped Directories**: Commands over every tracked directory leave out any directory whose tasks cannot run (its `.cronrc` changed since approval, was removed, is not a regular file, cannot be read, or no longer parses; its path contains a line break; or its store entry is not the directory's canonical path, which `cron-person deny <dir>` removes) and report or install the remaining directories and exit 0. `task list`, `crontab show`, and `crontab sync` name each skipped directory on stderr as `[WARN] skipped <dir>: <reason>` (`WARN: ...` in agent mode); `status` shows the reason on that directory's row instead. `crontab sync` therefore installs a partial block: a skipped directory loses its scheduled entries, which could not run anyway, until it is fixed and synced again.
 - **Shell Integration**: Evaluates the nearest ancestor `.cronrc` upon directory change; writes a warning to stderr when an unapproved file is found while keeping shell exit statuses unaffected.
 - **Agent Mode (`AGENT=1`)**: When `AGENT=1` is present in the environment, output disables decorative tree glyphs and tables, printing compact key-value lines for AI agents and automated scripts.
 
@@ -157,9 +157,21 @@ cron-person hook fish | source
 | :--- | :--- | :--- |
 | `allow` | `[path]` | Authorize `.cronrc` in the target directory |
 | `deny` | `[path]` | Revoke authorization for target directory |
-| `list` | | List all tracked directories and authorization status |
 | `check` | `[path]` | Validate `.cronrc` syntax and display detected tasks |
 | `status` | `[path]` | Show authorization status and tasks for specific directory |
+
+`cron-person status` summarizes tracked and allowed directories, scheduled tasks, and the configuration, then lists every tracked directory:
+
+```text
+Tracked Directories:
+  [OK] ~/projects/example (allowed, 2 tasks)
+     Hash: 3f8b0e8c8b4172f3e82d790dcfbcad4d440ad2f05df5e449a8fe100c86812891
+  [WARN] ~/projects/legacy (changed)
+     Hash: 9d1c2b7a0e6f4d3c8b5a2e1f0d9c8b7a6e5f4d3c2b1a0e9f8d7c6b5a4e3f2d1c
+     Problem: .cronrc changed since it was allowed: run 'cron-person allow ~/projects/legacy' to approve it
+```
+
+With `AGENT=1`, each directory is one tab-separated line with `dir`, `status`, `hash`, and `tasks` or `problem`.
 
 ### `cron-person crontab`
 

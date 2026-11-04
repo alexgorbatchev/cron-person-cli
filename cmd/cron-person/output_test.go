@@ -19,7 +19,7 @@ func TestCLIHomePaths(t *testing.T) {
 			dir, state := cliProject(t)
 			t.Setenv("HOME", dir)
 			for _, args := range [][]string{
-				{"allow", dir}, {"dir", "check", dir}, {"dir", "list"},
+				{"allow", dir}, {"dir", "check", dir}, {"status"},
 				{"dir", "status", dir}, {"task", "list"}, {"deny", dir},
 			} {
 				out := requireCLIOutput(t, append([]string{"--store", state}, args...), "~")
@@ -61,12 +61,9 @@ func TestCLIHomePaths(t *testing.T) {
 func TestCommandsReportInspectionAndParseErrors(t *testing.T) {
 	for _, mode := range []string{"0", "1"} {
 		for _, failure := range []string{"inspection", "parsing"} {
-			// Commands about one directory fail on it; commands over every
-			// directory skip it with a warning (TestAggregateCommandsSkipBrokenDirectories).
-			for _, command := range [][]string{{"dir", "list"}, {"dir", "status"}} {
-				if failure == "parsing" && strings.Join(command, " ") == "dir list" {
-					continue // Directory listings inspect authorization without parsing tasks.
-				}
+			// A command about one directory fails on it; commands over every
+			// directory skip it (TestAggregateCommandsSkipBrokenDirectories).
+			for _, command := range [][]string{{"dir", "status"}} {
 				t.Run(mode+"/"+failure+"/"+strings.Join(command, " "), func(t *testing.T) {
 					t.Setenv("AGENT", mode)
 					dir, state := cliProject(t)
@@ -177,9 +174,17 @@ func TestAggregateCommandsSkipBrokenDirectories(t *testing.T) {
 					if code := run(append([]string{"--store", state}, command...), &stdout, &stderr); code != 0 {
 						t.Fatalf("exit %d, stderr %q", code, stderr.String())
 					}
-					lines := strings.Split(strings.TrimSuffix(stderr.String(), "\n"), "\n")
-					if len(lines) != 1 || !strings.HasPrefix(lines[0], mode.prefix) || !strings.Contains(lines[0], want) {
-						t.Fatalf("stderr %q, want one %q warning containing %q", stderr.String(), mode.prefix, want)
+					if strings.Join(command, " ") == "status" {
+						// Status shows the reason on the directory's own row instead.
+						reason := strings.TrimPrefix(want, "skipped ~/broken: ")
+						if stderr.Len() != 0 || !strings.Contains(stdout.String(), "~/broken") || !strings.Contains(stdout.String(), reason) {
+							t.Fatalf("stdout %q stderr %q, want a row for ~/broken with %q", stdout.String(), stderr.String(), reason)
+						}
+					} else {
+						lines := strings.Split(strings.TrimSuffix(stderr.String(), "\n"), "\n")
+						if len(lines) != 1 || !strings.HasPrefix(lines[0], mode.prefix) || !strings.Contains(lines[0], want) {
+							t.Fatalf("stderr %q, want one %q warning containing %q", stderr.String(), mode.prefix, want)
+						}
 					}
 					if out := stdout.String(); strings.Contains(out, "printf broken") || strings.Contains(out, "printf edited") {
 						t.Fatalf("broken directory's tasks reported: %q", out)

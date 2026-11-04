@@ -10,7 +10,6 @@ import (
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
 	"github.com/alexgorbatchev/cron-person-cli/internal/display"
-	"github.com/alexgorbatchev/cron-person-cli/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -31,14 +30,10 @@ func resolveTargetDir(args []string) (string, error) {
 }
 
 func newDirCommand() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "dir",
-		Short: "Inspect and manage directory authorizations and .cronrc configurations",
-	}
+	cmd := newGroupCommand("dir", "Inspect and manage directory authorizations and .cronrc configurations")
 
 	cmd.AddCommand(newDirAllowCommand())
 	cmd.AddCommand(newDirDenyCommand())
-	cmd.AddCommand(newDirListCommand())
 	cmd.AddCommand(newDirCheckCommand())
 	cmd.AddCommand(newDirStatusCommand())
 
@@ -100,56 +95,6 @@ func newDirDenyCommand() *cobra.Command {
 			}
 
 			return writeOutput(cmd, fmt.Sprintf("[OK] Revoked authorization for %s\n", display.Path(dir)))
-		},
-	}
-}
-
-func newDirListCommand() *cobra.Command {
-	return &cobra.Command{
-		Use:   "list",
-		Short: "List all tracked directories and their authorization status",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			st, err := getStore(cmd)
-			if err != nil {
-				return err
-			}
-
-			inspections, err := st.InspectAll()
-			if err != nil {
-				return err
-			}
-
-			var out strings.Builder
-			if cobrahelptree.IsAgentMode() {
-				for _, in := range inspections {
-					rec, status, err := in.Record, in.Status, in.Err
-					if err != nil {
-						return fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
-					}
-					fmt.Fprintf(&out, "dir: %s\tstatus: %s\thash: %s\n", display.Path(rec.Dir), status, rec.Hash)
-				}
-				return writeOutput(cmd, out.String())
-			}
-
-			if len(inspections) == 0 {
-				return writeOutput(cmd, "No tracked directories. Use 'cron-person allow <path>' to authorize a directory.\n")
-			}
-
-			fmt.Fprintln(&out, "Tracked Directories:")
-			for _, in := range inspections {
-				rec, status, err := in.Record, in.Status, in.Err
-				if err != nil {
-					return fmt.Errorf("checking authorization for %s: %w", rec.Dir, err)
-				}
-				statusTag := "[OK]"
-				if status != store.StatusAllowed {
-					statusTag = "[WARN]"
-				}
-				fmt.Fprintf(&out, "  %s %s (%s)\n", statusTag, display.Path(rec.Dir), status)
-				fmt.Fprintf(&out, "     Hash: %s\n", rec.Hash)
-			}
-			return writeOutput(cmd, out.String())
 		},
 	}
 }

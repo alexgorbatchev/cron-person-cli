@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
@@ -74,6 +75,20 @@ func describeConfig(path string) (string, error) {
 	return "defaults", nil
 }
 
+// newGroupCommand returns a command that only holds subcommands: without
+// arguments it prints its help, and an unknown subcommand is an error rather
+// than a silent help screen.
+func newGroupCommand(use, short string) *cobra.Command {
+	return &cobra.Command{
+		Use:   use,
+		Short: short,
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return cmd.Help()
+		},
+	}
+}
+
 func newRootCommand() *cobra.Command {
 	rootCmd := &cobra.Command{
 		Use:           "cron-person",
@@ -110,10 +125,38 @@ func newRootCommand() *cobra.Command {
 	return rootCmd
 }
 
+// statusRow is one tracked directory as status reports it.
+type statusRow struct {
+	record  store.Record
+	status  store.DirStatus
+	tasks   int
+	problem error
+}
+
+// statusRows merges ready and skipped directories back into directory order.
+func statusRows(ready []store.Directory, skipped []store.Skipped) []statusRow {
+	rows := make([]statusRow, 0, len(ready)+len(skipped))
+	for _, dir := range ready {
+		rows = append(rows, statusRow{record: dir.Record, status: store.StatusAllowed, tasks: len(dir.File.Tasks)})
+	}
+	for _, s := range skipped {
+		rows = append(rows, statusRow{record: s.Record, status: s.Status, problem: s.Problem})
+	}
+	slices.SortFunc(rows, func(a, b statusRow) int { return strings.Compare(a.record.Dir, b.record.Dir) })
+	return rows
+}
+
+func plural(n int) string {
+	if n == 1 {
+		return ""
+	}
+	return "s"
+}
+
 func newRootStatusCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "status",
-		Short: "Display overall system status and tracked directory metrics",
+		Short: "Display overall system status and every tracked directory",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			st, err := getStore(cmd)
@@ -125,8 +168,8 @@ func newRootStatusCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			warnSkipped(cmd, skipped)
-			tracked, allowedCount, totalTasks := len(ready)+len(skipped), len(ready), 0
+			rows := statusRows(ready, skipped)
+			allowedCount, totalTasks := len(ready), 0
 			for _, dir := range ready {
 				totalTasks += len(dir.File.Tasks)
 			}
@@ -140,13 +183,21 @@ func newRootStatusCommand() *cobra.Command {
 			var out strings.Builder
 			if cobrahelptree.IsAgentMode() {
 				fmt.Fprintln(&out, "version: "+version)
-				fmt.Fprintf(&out, "tracked_dirs: %d\n", tracked)
+				fmt.Fprintf(&out, "tracked_dirs: %d\n", len(rows))
 				fmt.Fprintf(&out, "allowed_dirs: %d\n", allowedCount)
 				fmt.Fprintf(&out, "total_tasks: %d\n", totalTasks)
 				fmt.Fprintf(&out, "config: %s\n", display.Path(configPath))
 				fmt.Fprintf(&out, "config_status: %s\n", configState)
 				if configErr != nil {
 					fmt.Fprintf(&out, "config_error: %s\n", display.Error(configErr))
+				}
+				for _, row := range rows {
+					fmt.Fprintf(&out, "dir: %s\tstatus: %s\thash: %s", singleLine.Replace(display.Path(row.record.Dir)), row.status, row.record.Hash)
+					if row.problem != nil {
+						fmt.Fprintf(&out, "\tproblem: %s\n", singleLine.Replace(display.Error(row.problem)))
+					} else {
+						fmt.Fprintf(&out, "\ttasks: %d\n", row.tasks)
+					}
 				}
 				return writeOutput(cmd, out.String())
 			}
@@ -157,12 +208,30 @@ func newRootStatusCommand() *cobra.Command {
 				fmt.Fprintln(&out, "[OK] cron-person system status: active")
 			}
 			fmt.Fprintf(&out, "  Version:              %s\n", version)
-			fmt.Fprintf(&out, "  Tracked Directories:  %d\n", tracked)
+			fmt.Fprintf(&out, "  Tracked Directories:  %d\n", len(rows))
 			fmt.Fprintf(&out, "  Allowed Directories:  %d\n", allowedCount)
 			fmt.Fprintf(&out, "  Active Tasks:         %d\n", totalTasks)
 			fmt.Fprintf(&out, "  Configuration:        %s (%s)\n", display.Path(configPath), configState)
 			if configErr != nil {
 				fmt.Fprintf(&out, "  Configuration Error:  %s\n", display.Error(configErr))
+			}
+
+			if len(rows) == 0 {
+				fmt.Fprintln(&out, "\nNo tracked directories. Use 'cron-person allow <path>' to authorize a directory.")
+				return writeOutput(cmd, out.String())
+			}
+			fmt.Fprintln(&out, "\nTracked Directories:")
+			for _, row := range rows {
+				dir := singleLine.Replace(display.Path(row.record.Dir))
+				if row.problem != nil {
+					fmt.Fprintf(&out, "  [WARN] %s (%s)\n", dir, row.status)
+				} else {
+					fmt.Fprintf(&out, "  [OK] %s (%s, %d task%s)\n", dir, row.status, row.tasks, plural(row.tasks))
+				}
+				fmt.Fprintf(&out, "     Hash: %s\n", row.record.Hash)
+				if row.problem != nil {
+					fmt.Fprintf(&out, "     Problem: %s\n", singleLine.Replace(display.Error(row.problem)))
+				}
 			}
 			return writeOutput(cmd, out.String())
 		},

@@ -56,18 +56,18 @@ func TestDirectoryLifecycleBothModes(t *testing.T) {
 			run := func(want string, args ...string) string {
 				return requireCLIOutput(t, append([]string{"--store", state}, args...), want)
 			}
-			run(modeText(mode, "No tracked directories.", ""), "dir", "list")
+			run(modeText(mode, "No tracked directories.", "tracked_dirs: 0"), "status")
 			run(modeText(mode, "No tasks found", ""), "task", "list")
 			run(modeText(mode, "Status:    unauthorized", "status: unauthorized"), "dir", "status")
 			run(modeText(mode, "Found 1 scheduled task(s)", "tasks_count: 1"), "dir", "check")
 			run(modeText(mode, "Authorized", "status: allowed"), "dir", "allow")
-			run(dir, "dir", "list")
+			run(modeText(mode, "[OK] "+dir+" (allowed, 1 task)", "dir: "+dir+"\tstatus: allowed"), "status")
 			run(modeText(mode, "Status:    allowed", "status: allowed"), "dir", "status")
 			run(modeText(mode, "Active Tasks:         1", "total_tasks: 1"), "status")
 			run("printf scheduled", "task", "list")
 			run("printf scheduled", "crontab", "show")
 			writeCLIFile(t, filepath.Join(dir, ".cronrc"), "@hourly printf changed\n")
-			run(modeText(mode, "[WARN]", "status: changed"), "dir", "list")
+			run(modeText(mode, "[WARN] "+dir+" (changed)", "dir: "+dir+"\tstatus: changed"), "status")
 			run(modeText(mode, "Status:    changed", "status: changed"), "dir", "status")
 			run(modeText(mode, "Active Tasks:         0", "total_tasks: 0"), "status")
 			if out := run("", "task", "list"); strings.Contains(out, "printf changed") {

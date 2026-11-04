@@ -26,6 +26,11 @@ const (
 	StatusUnauthorized  DirStatus = "unauthorized"
 	StatusMissingCronrc DirStatus = "missing_cronrc"
 	StatusOrphan        DirStatus = "orphan"
+	// StatusUnreadable and StatusInvalid describe tracked directories left
+	// out of scheduling: the .cronrc could not be read, or its approved
+	// snapshot or path cannot become a crontab entry.
+	StatusUnreadable DirStatus = "unreadable"
+	StatusInvalid    DirStatus = "invalid"
 )
 
 // Record holds authorization data for a directory containing a .cronrc file.
@@ -428,9 +433,10 @@ type Directory struct {
 // crontab entry.
 const unschedulablePathChars = "\r\n\x00"
 
-// Skipped is a tracked directory left out of scheduling, and why.
+// Skipped is a tracked directory left out of scheduling, its status, and why.
 type Skipped struct {
 	Record  Record
+	Status  DirStatus
 	Problem error
 }
 
@@ -446,17 +452,29 @@ func (s *Store) Schedulable() ([]Directory, []Skipped, error) {
 	var skipped []Skipped
 	for _, in := range inspections {
 		if problem := in.problem(); problem != nil {
-			skipped = append(skipped, Skipped{Record: in.Record, Problem: problem})
+			skipped = append(skipped, Skipped{Record: in.Record, Status: in.skippedStatus(), Problem: problem})
 			continue
 		}
 		file, err := cronrc.Parse(bytes.NewReader(in.Snapshot), in.Record.Path)
 		if err != nil {
-			skipped = append(skipped, Skipped{Record: in.Record, Problem: fmt.Errorf("parsing %s: %w", in.Record.Path, err)})
+			skipped = append(skipped, Skipped{Record: in.Record, Status: StatusInvalid, Problem: fmt.Errorf("parsing %s: %w", in.Record.Path, err)})
 			continue
 		}
 		ready = append(ready, Directory{Record: in.Record, File: file})
 	}
 	return ready, skipped, nil
+}
+
+// skippedStatus is the status reported for a directory problem leaves out.
+func (in Inspection) skippedStatus() DirStatus {
+	switch {
+	case in.Err != nil:
+		return StatusUnreadable
+	case strings.ContainsAny(in.Record.Dir, unschedulablePathChars):
+		return StatusInvalid
+	default:
+		return in.Status
+	}
 }
 
 // problem explains why an inspected directory's tasks may not run, or

@@ -39,8 +39,8 @@ var techCatalog = cobrahelptree.TechCatalog{
 		MutatesDB: true,
 	},
 	"cron-person status": {
-		Summary:     "Display overall system status and metrics",
-		Description: "Outputs active directories, allowed count, and total scheduled tasks.",
+		Summary:     "Display overall system status and every tracked directory",
+		Description: "Summarizes tracked and allowed directories, scheduled tasks, and the configuration, then lists each tracked directory with its authorization status, task count, and why any directory's tasks cannot run.",
 	},
 	"cron-person dir": {
 		Summary:     "Inspect and manage directory authorizations and .cronrc configurations",
@@ -61,10 +61,6 @@ var techCatalog = cobrahelptree.TechCatalog{
 			{Name: "[path]", Description: "Directory containing .cronrc (defaults to current directory or nearest ancestor)"},
 		},
 		MutatesDB: true,
-	},
-	"cron-person dir list": {
-		Summary:     "List all tracked directories and their authorization status",
-		Description: "Displays all known directories with current authorization health (allowed, changed, missing).",
 	},
 	"cron-person dir check": {
 		Summary:     "Validate syntax and parseability of a .cronrc file",
