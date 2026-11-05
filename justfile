@@ -74,9 +74,9 @@ fmt:
 # Run static analysis, then the race-enabled tests and coverage gate CI runs
 check: lint coverage
 
-# Clean up build binaries and temporary files
+# Clean build outputs while preserving session-owned scratch
 clean:
-    rm -rf bin coverage.out .tmp dist
+    rm -rf bin coverage.out dist
 
 # Download project dependencies for local development
 setup:

@@ -37,6 +37,7 @@ func TestAttachedRunForwardsInputAndReportsExitStatus(t *testing.T) {
 }
 
 func TestAttachedRunCtrlCPrompt(t *testing.T) {
+	t.Setenv("AGENT", "0")
 	const command = "echo ready; sleep 1; echo finished"
 	for _, tt := range []struct {
 		name    string

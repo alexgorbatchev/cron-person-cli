@@ -20,6 +20,8 @@ jobs:
         with:
           go-version-file: 'go.mod'
 
+      - uses: extractions/setup-just@v4
+
       # The generated-hook tests skip shells that are not installed; the
       # runner image lacks Fish and Zsh.
       - name: Install hook shells

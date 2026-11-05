@@ -20,6 +20,7 @@ type historyFixture struct {
 // the first directory's .cronrc changed.
 func newHistoryFixture(t *testing.T) historyFixture {
 	t.Helper()
+	privateHome(t)
 	t.Setenv("SHELL", "/bin/sh")
 	tmp := t.TempDir()
 	f := historyFixture{

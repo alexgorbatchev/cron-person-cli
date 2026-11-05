@@ -73,6 +73,7 @@ func TestCLICrontabFailures(t *testing.T) {
 }
 
 func TestCLICrontabUninstallIgnoresDamagedStore(t *testing.T) {
+	t.Setenv("AGENT", "0")
 	path := cliCrontab(t)
 	userJobs := "@weekly personal-job\n"
 	writeCLIFile(t, path, userJobs+crontab.BlockStart+"\n@daily managed\n"+crontab.BlockEnd+"\n")
