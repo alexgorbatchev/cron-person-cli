@@ -1,6 +1,6 @@
 ---
 created_on: 2026-09-24 17:53
-last_modified: 2026-11-01 09:51
+last_modified: 2026-11-05 06:53
 status: current
 ---
 
@@ -25,7 +25,7 @@ Higher-order per-directory crontab manager with direnv-style shell integration
 
 ## Setup & Environment
 - **Prerequisites:** Go 1.26.2+ (`go.mod` pins the patched `toolchain` that builds and releases use; `GOTOOLCHAIN=auto` fetches it), `just`.
-- **Temporary Files:** Temporary file operations use `.tmp/` within the project root.
+- **Temporary Files:** Temporary file operations use an invocation-owned child of `.tmp/` within the project root. `scripts/check-coverage.sh` passes its unique profile to the native coverage tool, stops consumer process groups, and removes owned scratch on success, failure, and cancellation. Preserve scratch if shutdown cannot be verified; never remove another invocation's directory. Local checks, CI, and release verification use this recipe.
 
 ## Conventions
 - **Output Formatting & No Decorative Headers:** All CLI output must be plain text without emojis across all modes.

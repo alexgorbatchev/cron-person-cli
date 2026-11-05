@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -46,14 +47,14 @@ func TestSpecialFilesAreRejectedWithoutBlocking(t *testing.T) {
 }
 
 func TestSocketIsNotRegular(t *testing.T) {
-	// Unix socket paths are short, so bind under a short temporary directory.
-	dir, err := os.MkdirTemp("", "sock")
-	if err != nil {
+	dir := filepath.Join(t.TempDir(), strings.Repeat("nested", 20))
+	if err := os.Mkdir(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	// Bind a relative name so deep checkout-owned scratch does not exceed sun_path.
+	t.Chdir(dir)
 	path := filepath.Join(dir, ".cronrc")
-	l, err := net.Listen("unix", path)
+	l, err := net.Listen("unix", ".cronrc")
 	if err != nil {
 		t.Fatal(err)
 	}

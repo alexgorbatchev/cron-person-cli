@@ -37,9 +37,7 @@ bench:
 
 # Run the tests with the race detector and fail when any package is below 90% statement coverage, as CI does
 coverage:
-    mkdir -p .tmp
-    go test -race -covermode=atomic -coverprofile=.tmp/cover.out ./...
-    go tool go-test-coverage --config=.testcoverage.yml
+    bash scripts/check-coverage.sh
 
 # Check code, dependencies, and the standard library for every released OS against the Go vulnerability database (needs network)
 vuln:
