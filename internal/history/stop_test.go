@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -162,5 +163,84 @@ func TestLiveListsRunningRunsOfOneTask(t *testing.T) {
 	}
 	if _, err := l.Live(TaskID("/srv/a", "one")); err == nil {
 		t.Fatal("Live succeeded with a corrupt run record")
+	}
+}
+
+// stopOnRequest plays the part of a recorder: it finishes rec as stopped once
+// a stop is requested.
+func stopOnRequest(t *testing.T, rec *Recording) {
+	t.Helper()
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			if requested, _ := rec.StopRequested(); requested {
+				rec.Stopped()
+				_ = rec.Finish(nil)
+				return
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}()
+	t.Cleanup(func() {
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+			t.Error("recorder never stopped")
+		}
+	})
+}
+
+func TestStopRunsReportsEachRun(t *testing.T) {
+	l := New(t.TempDir())
+	live := startRun(t, l, "/srv/a", "one")
+	stopOnRequest(t, live)
+	finished := startRun(t, l, "/srv/a", "two")
+	if err := finished.Finish(nil); err != nil {
+		t.Fatal(err)
+	}
+	unknown := "20260101T000000.000000Z-00000000"
+
+	results := l.StopRuns(t.Context(), []string{live.ID(), finished.ID(), unknown}, 5*time.Second, time.Millisecond)
+	if len(results) != 3 {
+		t.Fatalf("results = %+v", results)
+	}
+	if r := results[0]; r.ID != live.ID() || r.Err != nil || r.Run.Status != StatusStopped {
+		t.Fatalf("live run = %+v", r)
+	}
+	if r := results[1]; !errors.Is(r.Err, ErrNotRunning) || r.Run.Status != StatusSucceeded {
+		t.Fatalf("finished run = %+v", r)
+	}
+	if r := results[2]; !errors.Is(r.Err, ErrNotFound) {
+		t.Fatalf("unknown run = %+v", r)
+	}
+}
+
+func TestStopRunsReportsARunThatOutlivesTheWait(t *testing.T) {
+	l := New(t.TempDir())
+	rec := startRun(t, l, "/srv/a", "one")
+	t.Cleanup(func() { _ = rec.Finish(nil) })
+	results := l.StopRuns(t.Context(), []string{rec.ID()}, 30*time.Millisecond, time.Millisecond)
+	if len(results) != 1 || results[0].Err == nil || !strings.Contains(results[0].Err.Error(), "is still running 30ms after the stop request") {
+		t.Fatalf("results = %+v", results)
+	}
+}
+
+func TestStopRunsReportsWaitFailures(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores file permissions")
+	}
+	l := New(t.TempDir())
+	rec := startRun(t, l, "/srv/a", "one")
+	t.Cleanup(func() { _ = rec.Finish(nil) })
+	if _, err := l.RequestStop(rec.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(rec.dir, lockFile), 0); err != nil {
+		t.Fatal(err)
+	}
+	results := l.StopRuns(t.Context(), []string{rec.ID()}, time.Second, time.Millisecond)
+	if len(results) != 1 || results[0].Err == nil || strings.Contains(results[0].Err.Error(), "still running") {
+		t.Fatalf("results = %+v", results)
 	}
 }

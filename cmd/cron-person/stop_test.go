@@ -5,10 +5,8 @@ package main
 import (
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/alexgorbatchev/cron-person-cli/internal/history"
 )
@@ -88,21 +86,5 @@ func TestCLI_TaskStopReportsRunsItCannotStop(t *testing.T) {
 	}
 	if !strings.Contains(out, live.ID+"  stopped") {
 		t.Fatalf("the live run was not stopped:\n%s", out)
-	}
-}
-
-func TestCLI_TaskStopReportsARunThatOutlivesTheWait(t *testing.T) {
-	previous := stopTimeout
-	stopTimeout = 200 * time.Millisecond
-	t.Cleanup(func() { stopTimeout = previous })
-
-	state, project := configProject(t)
-	release := filepath.Join(t.TempDir(), "release")
-	run := startRecorder(t, state, project, "trap '' TERM; while [ ! -e "+release+" ]; do sleep 0.01; done")
-	t.Cleanup(func() { _ = os.WriteFile(release, nil, 0o600) })
-
-	out, err := executeCommand("--store", state, "task", "stop", run.ID)
-	if err == nil || !strings.Contains(err.Error(), "is still running 200ms after the stop request") {
-		t.Fatalf("task stop = %v\n%s", err, out)
 	}
 }

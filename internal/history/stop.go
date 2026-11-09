@@ -87,3 +87,43 @@ func (r *Recording) Stopped() {
 	defer r.mu.Unlock()
 	r.stopped = true
 }
+
+// StopResult is the outcome of asking one run to stop.
+type StopResult struct {
+	ID string
+	// Run is the run's final record when it stopped, or the record as it
+	// was when asked otherwise.
+	Run Run
+	Err error
+}
+
+// StopRuns asks every run in ids to stop, then waits for all of them, so the
+// runs stop concurrently and the whole wait is bounded by timeout. poll is how
+// often each run is checked while waiting. A run that is unknown, already
+// finished, or still running when the wait ends reports its error and does
+// not affect the others.
+func (l *Log) StopRuns(ctx context.Context, ids []string, timeout, poll time.Duration) []StopResult {
+	results := make([]StopResult, len(ids))
+	for i, id := range ids {
+		run, err := l.RequestStop(id)
+		results[i] = StopResult{ID: id, Run: run, Err: err}
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	for i := range results {
+		r := &results[i]
+		if r.Err != nil {
+			continue
+		}
+		final, err := l.Wait(ctx, r.Run, poll)
+		switch {
+		case errors.Is(err, context.DeadlineExceeded):
+			r.Err = fmt.Errorf("run %s is still running %s after the stop request", r.ID, timeout)
+		case err != nil:
+			r.Err = err
+		default:
+			r.Run = final
+		}
+	}
+	return results
+}
