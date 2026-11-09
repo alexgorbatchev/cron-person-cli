@@ -99,14 +99,21 @@ type StopResult struct {
 
 // StopRuns asks every run in ids to stop, then waits for all of them, so the
 // runs stop concurrently and the whole wait is bounded by timeout. poll is how
-// often each run is checked while waiting. A run that is unknown, already
+// often each run is checked while waiting, and each run is reported once in
+// the order first named. A run that is unknown, already
 // finished, or still running when the wait ends reports its error and does
 // not affect the others.
 func (l *Log) StopRuns(ctx context.Context, ids []string, timeout, poll time.Duration) []StopResult {
-	results := make([]StopResult, len(ids))
-	for i, id := range ids {
+	results := make([]StopResult, 0, len(ids))
+	seen := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		// A run named twice is stopped and reported once.
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
 		run, err := l.RequestStop(id)
-		results[i] = StopResult{ID: id, Run: run, Err: err}
+		results = append(results, StopResult{ID: id, Run: run, Err: err})
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()

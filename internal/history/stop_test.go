@@ -201,7 +201,7 @@ func TestStopRunsReportsEachRun(t *testing.T) {
 	}
 	unknown := "20260101T000000.000000Z-00000000"
 
-	results := l.StopRuns(t.Context(), []string{live.ID(), finished.ID(), unknown}, 5*time.Second, time.Millisecond)
+	results := l.StopRuns(t.Context(), []string{live.ID(), finished.ID(), live.ID(), unknown}, 5*time.Second, time.Millisecond)
 	if len(results) != 3 {
 		t.Fatalf("results = %+v", results)
 	}
