@@ -105,6 +105,9 @@ func runRecordedTask(cmd *cobra.Command, dir, command string, trigger history.Tr
 		MaxOutputBytes: cfg.History.MaxOutputBytes(),
 		Warnings:       warnings,
 	}
+	if trigger == history.TriggerManual {
+		opts.OnWarning = func(msg string) { writeWarning(cmd, msg) }
+	}
 	if runIDFile != "" {
 		opts.OnStart = func(id string) { idErr = reportRunID(runIDFile, id) }
 	}
