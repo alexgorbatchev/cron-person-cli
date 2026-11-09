@@ -8,7 +8,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-09 10:20
+  last_modified: 2026-11-09 12:00
   status: current
 ---
 
@@ -203,11 +203,11 @@ Agent output: `dir`, `task`, `paused_until` (RFC 3339, UTC), and `cmd` on one ta
 
 ### `cron-person task resume <dir> <command...>`
 
-Ends a task's pause so its scheduled runs start again. The directory does not need to be authorized. Fails with `task is not paused` when the task has no pause or it has already ended. Agent output: `dir`, `task`, `status: resumed`, and `cmd` on one tab-separated line.
+Ends a task's pause so its scheduled runs start again. The directory does not need to be authorized. Fails with `task is not paused` when the task has no pause or it has already ended. A pause record that cannot be read is removed. `task list` ignores such a record with a warning, and scheduled runs treat it as no pause. Agent output: `dir`, `task`, `status: resumed`, and `cmd` on one tab-separated line.
 
 ### `cron-person exec <dir> [--] <command...>`
 
-The entry point generated crontab lines call. Runs and records the task with trigger `cron`, in the foreground with no prompt. SIGINT, SIGTERM, and SIGHUP terminate the task's process group as described under `task run`, and the outcome is still recorded. When the task exits but a process it left in the background keeps its output open, capture stops after 10 seconds and the run records a warning; redirect the output of background processes.
+The entry point generated crontab lines call. Runs and records the task with trigger `cron`, in the foreground with no prompt. SIGINT, SIGTERM, and SIGHUP terminate the task's process group as described under `task run`, and the outcome is still recorded. When the task exits but a process it left in the background keeps its output open, capture stops after 10 seconds and the run records a warning; redirect the output of background processes. While the task is paused (`task pause`), a cron-triggered `exec` records the run as `paused`, runs nothing, and exits `0`.
 
 ### `cron-person hook <bash|zsh|fish>`
 

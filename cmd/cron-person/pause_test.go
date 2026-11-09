@@ -4,6 +4,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -154,5 +155,33 @@ func TestCLI_TaskPauseRefusesUnknownTasksAndBadDurations(t *testing.T) {
 	runs := history.New(history.DirForStore(state))
 	if _, paused, err := runs.PausedUntil(history.TaskID(project, "true"), time.Now()); err != nil || paused {
 		t.Fatalf("a refused pause took effect: %v, %v", paused, err)
+	}
+}
+
+func TestCLI_TaskListIgnoresAnUnreadablePause(t *testing.T) {
+	t.Setenv("AGENT", "0")
+	state, project := pauseProject(t)
+	if out, err := executeCommand("--store", state, "task", "pause", project, "true", "--for", "1h"); err != nil {
+		t.Fatalf("task pause: %v\n%s", err, out)
+	}
+	pause := filepath.Join(history.DirForStore(state), history.TaskID(project, "true"), "pause.json")
+	if err := os.WriteFile(pause, []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"--store", state, "task", "list"}, &stdout, &stderr); code != 0 {
+		t.Fatalf("task list: exit %d stderr %q", code, stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "Command: sleep 30") || !strings.Contains(stdout.String(), "Command: true") || strings.Contains(stdout.String(), "Paused until") {
+		t.Fatalf("task list stdout:\n%s", stdout.String())
+	}
+	if !strings.Contains(stderr.String(), "[WARN] ignoring the pause of true in ") {
+		t.Fatalf("task list stderr: %q", stderr.String())
+	}
+	if out, err := executeCommand("--store", state, "task", "resume", project, "true"); err != nil {
+		t.Fatalf("resume of a broken pause: %v\n%s", err, out)
+	}
+	if _, err := os.Stat(pause); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("broken pause left behind: %v", err)
 	}
 }

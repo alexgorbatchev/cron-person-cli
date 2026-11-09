@@ -32,17 +32,18 @@ func (l *Log) Pause(dir, command string, until time.Time) error {
 
 // Resume ends the pause of the task identified by dir and command. A task
 // with no pause, or one that has already expired, reports ErrNotPaused; an
-// expired pause is removed either way.
+// expired pause is removed either way. A pause record that cannot be read is
+// removed too, so resuming always clears a broken pause.
 func (l *Log) Resume(dir, command string, now time.Time) error {
 	taskID := TaskID(dir, command)
-	_, paused, err := l.PausedUntil(taskID, now)
-	if err != nil {
-		return err
-	}
-	if err := os.Remove(filepath.Join(l.root, taskID, pauseFile)); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("resuming task: %w", err)
-	}
-	if !paused {
+	_, paused, readErr := l.PausedUntil(taskID, now)
+	err := os.Remove(filepath.Join(l.root, taskID, pauseFile))
+	switch {
+	case errors.Is(err, os.ErrNotExist):
+		return ErrNotPaused
+	case err != nil:
+		return errors.Join(readErr, fmt.Errorf("resuming task: %w", err))
+	case readErr == nil && !paused:
 		return ErrNotPaused
 	}
 	return nil

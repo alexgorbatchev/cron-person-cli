@@ -75,9 +75,11 @@ func newTaskListCommand() *cobra.Command {
 						Line:        t.LineNumber,
 						TaskID:      history.TaskID(rec.Dir, t.Command),
 					}
+					// A pause record that cannot be read counts as no pause, as it
+					// does when the task runs, so it never hides other tasks.
 					until, paused, err := log.PausedUntil(item.TaskID, now)
 					if err != nil {
-						return err
+						writeWarning(cmd, fmt.Sprintf("ignoring the pause of %s in %s: %s", t.Command, display.Path(rec.Dir), display.Error(err)))
 					}
 					if paused {
 						item.PausedUntil = until

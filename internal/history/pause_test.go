@@ -109,8 +109,12 @@ func TestPauseReportsStorageFailures(t *testing.T) {
 	if _, _, err := l.PausedUntil(id, time.Now()); err == nil {
 		t.Fatal("PausedUntil accepted a corrupt pause")
 	}
-	if err := l.Resume("/srv/a", "one", time.Now()); err == nil || errors.Is(err, ErrNotPaused) {
+	// Resuming clears a pause that cannot be read.
+	if err := l.Resume("/srv/a", "one", time.Now()); err != nil {
 		t.Fatalf("Resume of a corrupt pause = %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, id, pauseFile)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("corrupt pause left behind: %v", err)
 	}
 
 	if err := l.Pause("/srv/a", "one", time.Now().Add(time.Hour)); err != nil {
