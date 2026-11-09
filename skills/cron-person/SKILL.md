@@ -8,7 +8,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-09 12:00
+  last_modified: 2026-11-09 13:00
   status: current
 ---
 
@@ -195,7 +195,7 @@ Agent output: one tab-separated line per stopped run with `id`, `status`, `exit`
 
 ### `cron-person task pause <dir> <command...>`
 
-Stops the task's live runs, as `task stop` does, and skips its scheduled runs until the pause ends. The task is named by its directory and exact command, as `task list` shows them, and must be in an authorized `.cronrc`. Each scheduled run during the pause is recorded as `paused`, runs nothing, and exits `0`. A manual `task run` still runs the task, printing and recording a warning. Pausing a paused task replaces its end time. The crontab is unchanged, so the pause ends on its own; a pause belongs to the task ID, so changing the command in `.cronrc` leaves the new command unpaused.
+Stops the task's live runs, as `task stop` does, and skips its scheduled runs until the pause ends. The task is named by its directory and exact command, as `task list` shows them, and must be in an authorized `.cronrc`. Each scheduled run during the pause is recorded as `paused`, runs nothing, and exits `0`. A manual `task run` still runs the task, printing and recording a warning. Pausing a paused task replaces its end time. The crontab is unchanged, so the pause ends on its own, and the history pruning after each run deletes the ended pause record; a pause belongs to the task ID, so changing the command in `.cronrc` leaves the new command unpaused.
 
 - `--for` (duration, required): how long to pause, in Go duration syntax such as `90m` or `48h`; must be positive.
 

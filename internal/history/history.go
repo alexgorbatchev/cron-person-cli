@@ -258,11 +258,19 @@ type pruneCandidate struct {
 // Prune deletes finished runs older than MaxAge, then the oldest finished runs
 // until history fits within MaxBytes. Runs in progress and the newest run of
 // every task are always kept, so MaxBytes is a target that a single large run
-// can exceed.
+// can exceed. Pause records that have ended are removed too.
 func (l *Log) Prune(r Retention, now time.Time) error {
+	// Expired pauses are removed whatever the retention, since they no
+	// longer do anything.
+	pauseErr := l.pruneExpiredPauses(now)
 	if r.MaxAge <= 0 && r.MaxBytes <= 0 {
-		return nil
+		return pauseErr
 	}
+	return errors.Join(pauseErr, l.pruneRuns(r, now))
+}
+
+// pruneRuns removes finished runs past the retention limits.
+func (l *Log) pruneRuns(r Retention, now time.Time) error {
 	refs, err := l.scan(nil)
 	if err != nil {
 		return err

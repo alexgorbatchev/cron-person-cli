@@ -62,7 +62,8 @@ func TestRunnerRunsAPausedTaskStartedByHand(t *testing.T) {
 func TestRunnerRunsATaskWhosePauseEnded(t *testing.T) {
 	t.Setenv("SHELL", "/bin/sh")
 	st, dir := runnerProject(t, "@daily true\n")
-	log := history.New(filepath.Join(t.TempDir(), "runs"))
+	root := filepath.Join(t.TempDir(), "runs")
+	log := history.New(root)
 	if err := log.Pause(dir, "touch ran", time.Now().Add(-time.Second)); err != nil {
 		t.Fatal(err)
 	}
@@ -71,6 +72,10 @@ func TestRunnerRunsATaskWhosePauseEnded(t *testing.T) {
 	}
 	if run := onlyRun(t, log); run.Status != history.StatusSucceeded || len(run.Warnings) != 0 {
 		t.Fatalf("run = %+v", run)
+	}
+	// The run's pruning removed the pause that had ended.
+	if _, err := os.Stat(filepath.Join(root, history.TaskID(dir, "touch ran"), "pause.json")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("expired pause left behind: %v", err)
 	}
 }
 
