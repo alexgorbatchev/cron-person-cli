@@ -48,6 +48,8 @@ const (
 	// recording an outcome. It is derived on read from the released run lock
 	// and never written.
 	StatusInterrupted Status = "interrupted"
+	// StatusStopped marks runs ended by a stop request (`task stop`).
+	StatusStopped Status = "stopped"
 )
 
 const (
@@ -55,6 +57,7 @@ const (
 	metaFile    = "meta.json"
 	outputFile  = "output.log"
 	lockFile    = "run.lock"
+	stopFile    = "stop"
 	dirPerm     = 0o700
 	runIDLayout = "20060102T150405.000000Z"
 	// creationGrace protects a run whose directory exists before its lock does.
@@ -64,6 +67,9 @@ const (
 
 // ErrNotFound is returned when a run ID does not exist in the log.
 var ErrNotFound = errors.New("run not found")
+
+// ErrNotRunning reports a stop request for a run that has already ended.
+var ErrNotRunning = errors.New("run is not running")
 
 // Run describes a single task execution.
 type Run struct {
