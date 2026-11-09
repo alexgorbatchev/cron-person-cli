@@ -3,21 +3,25 @@ package main
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	cobrahelptree "github.com/alexgorbatchev/cobra-help-tree/v4"
 	"github.com/alexgorbatchev/cron-person-cli/internal/cronrc"
 	"github.com/alexgorbatchev/cron-person-cli/internal/display"
+	"github.com/alexgorbatchev/cron-person-cli/internal/history"
 	"github.com/spf13/cobra"
 )
 
 func newTaskCommand() *cobra.Command {
-	cmd := newGroupCommand("task", "Inspect, trigger, and stop scheduled tasks")
+	cmd := newGroupCommand("task", "Inspect, trigger, stop, and pause scheduled tasks")
 
 	cmd.AddCommand(newTaskListCommand())
 	cmd.AddCommand(newTaskRunCommand())
 	cmd.AddCommand(newTaskHistoryCommand())
 	cmd.AddCommand(newTaskLogCommand())
 	cmd.AddCommand(newTaskStopCommand())
+	cmd.AddCommand(newTaskPauseCommand())
+	cmd.AddCommand(newTaskResumeCommand())
 
 	return cmd
 }
@@ -46,7 +50,12 @@ func newTaskListCommand() *cobra.Command {
 				Description string
 				Command     string
 				Line        int
+				TaskID      string
+				PausedUntil time.Time
 			}
+
+			log := runHistory(st)
+			now := time.Now()
 
 			var tasks []taskItem
 			for _, dir := range ready {
@@ -57,21 +66,34 @@ func newTaskListCommand() *cobra.Command {
 					if err != nil {
 						return fmt.Errorf("describing schedule at %s:%d: %w", parsed.Path, t.LineNumber, err)
 					}
-					tasks = append(tasks, taskItem{
+					item := taskItem{
 						Dir:         rec.Dir,
 						Path:        parsed.Path,
 						Schedule:    t.Schedule,
 						Description: description,
 						Command:     t.Command,
 						Line:        t.LineNumber,
-					})
+						TaskID:      history.TaskID(rec.Dir, t.Command),
+					}
+					until, paused, err := log.PausedUntil(item.TaskID, now)
+					if err != nil {
+						return err
+					}
+					if paused {
+						item.PausedUntil = until
+					}
+					tasks = append(tasks, item)
 				}
 			}
 
 			var out strings.Builder
 			if cobrahelptree.IsAgentMode() {
 				for _, t := range tasks {
-					fmt.Fprintf(&out, "dir: %s\tfile: %s\tline: %d\tschedule: %s\tdescription: %s\tcmd: %s\n", display.Path(t.Dir), display.Path(t.Path), t.Line, t.Schedule, t.Description, t.Command)
+					pausedUntil := "-"
+					if !t.PausedUntil.IsZero() {
+						pausedUntil = t.PausedUntil.UTC().Format(time.RFC3339)
+					}
+					fmt.Fprintf(&out, "dir: %s\tfile: %s\tline: %d\ttask: %s\tschedule: %s\tdescription: %s\tpaused_until: %s\tcmd: %s\n", display.Path(t.Dir), display.Path(t.Path), t.Line, t.TaskID, t.Schedule, t.Description, pausedUntil, t.Command)
 				}
 				return writeOutput(cmd, out.String())
 			}
@@ -90,6 +112,10 @@ func newTaskListCommand() *cobra.Command {
 				fmt.Fprintf(&out, "  %s [%s]\n", t.Description, t.Schedule)
 				fmt.Fprintf(&out, "    Source: %s:%d\n", display.Path(t.Path), t.Line)
 				fmt.Fprintf(&out, "    Command: %s\n", t.Command)
+				fmt.Fprintf(&out, "    Task: %s\n", t.TaskID)
+				if !t.PausedUntil.IsZero() {
+					fmt.Fprintf(&out, "    Paused until: %s\n", t.PausedUntil.Local().Format(humanTimeLayout))
+				}
 			}
 			return writeOutput(cmd, out.String())
 		},

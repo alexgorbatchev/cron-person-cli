@@ -47,6 +47,9 @@ type ExecOptions struct {
 	// StopPoll is how often a recorded run checks for a stop request (`task
 	// stop`). Zero selects DefaultStopPoll.
 	StopPoll time.Duration
+	// OnWarning receives warnings raised while the run starts, such as a
+	// manual run of a paused task, so the caller can show them too.
+	OnWarning func(msg string)
 }
 
 const (
@@ -89,6 +92,29 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 		}
 	}
 
+	// A paused task skips scheduled runs; a manual run is an explicit request
+	// and goes ahead with a warning.
+	if opts.History != nil {
+		until, paused, err := opts.History.PausedUntil(history.TaskID(absDir, opts.Command), time.Now())
+		switch {
+		case err != nil:
+			historyErr = errors.Join(historyErr, fmt.Errorf("checking whether the task is paused: %w", err))
+		case paused && opts.Trigger == history.TriggerCron:
+			if rec != nil {
+				historyErr = errors.Join(historyErr, rec.Skip("task is paused until "+until.Local().Format(time.RFC3339)))
+			}
+			return errors.Join(historyErr, prune(opts))
+		case paused:
+			msg := "task is paused until " + until.Local().Format(time.RFC3339) + "; running it because it was started by hand"
+			if rec != nil {
+				rec.Warn(msg)
+			}
+			if opts.OnWarning != nil {
+				opts.OnWarning(msg)
+			}
+		}
+	}
+
 	// A stop request cancels the task through the same graceful path as a
 	// signal to this process.
 	ctx, cancel := context.WithCancel(ctx)
@@ -97,7 +123,7 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 	cmd, err := r.prepare(ctx, absDir, opts)
 	if err != nil {
 		if rec != nil {
-			historyErr = rec.Reject(err)
+			historyErr = errors.Join(historyErr, rec.Reject(err))
 		}
 		return errors.Join(err, historyErr, prune(opts))
 	}
@@ -150,7 +176,7 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 		runErr = fmt.Errorf("task failed in %s: %w", absDir, runErr)
 	}
 	if rec != nil {
-		historyErr = errors.Join(rec.Finish(runErr), watchErr)
+		historyErr = errors.Join(historyErr, rec.Finish(runErr), watchErr)
 	}
 	if stopped {
 		// A requested stop is an outcome, not a failure: the run records it

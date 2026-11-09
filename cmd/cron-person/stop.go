@@ -27,28 +27,35 @@ func newTaskStopCommand() *cobra.Command {
 			}
 			results := runner.StopRuns(cmd.Context(), runHistory(st), args)
 
-			agent := cobrahelptree.IsAgentMode()
 			var out strings.Builder
-			var errs []error
-			for _, r := range results {
-				if errors.Is(r.Err, history.ErrNotFound) {
-					errs = append(errs, fmt.Errorf("%w: run 'cron-person task history' to list recorded runs", r.Err))
-					continue
-				}
-				if r.Err != nil {
-					errs = append(errs, r.Err)
-					continue
-				}
-				if agent {
-					fmt.Fprintf(&out, "id: %s\tstatus: %s\texit: %s\tdir: %s\tcmd: %s\n", r.Run.ID, r.Run.Status, exitCodeText(r.Run), display.Path(r.Run.Dir), r.Run.Command)
-					continue
-				}
-				fmt.Fprintf(&out, "%s %s  %s\n     Task: %s  %s\n", statusTag(r.Run.Status), r.Run.ID, statusText(r.Run), display.Path(r.Run.Dir), r.Run.Command)
-			}
+			errs := writeStopResults(&out, results, cobrahelptree.IsAgentMode())
 			if err := writeOutput(cmd, out.String()); err != nil {
 				return err
 			}
 			return errors.Join(errs...)
 		},
 	}
+}
+
+// writeStopResults describes each stopped run in out and returns the errors of
+// runs that could not be stopped, naming the command that lists run IDs when
+// an ID is unknown.
+func writeStopResults(out *strings.Builder, results []history.StopResult, agent bool) []error {
+	var errs []error
+	for _, r := range results {
+		if errors.Is(r.Err, history.ErrNotFound) {
+			errs = append(errs, fmt.Errorf("%w: run 'cron-person task history' to list recorded runs", r.Err))
+			continue
+		}
+		if r.Err != nil {
+			errs = append(errs, r.Err)
+			continue
+		}
+		if agent {
+			fmt.Fprintf(out, "id: %s\tstatus: %s\texit: %s\tdir: %s\tcmd: %s\n", r.Run.ID, r.Run.Status, exitCodeText(r.Run), display.Path(r.Run.Dir), r.Run.Command)
+			continue
+		}
+		fmt.Fprintf(out, "%s %s  %s\n     Task: %s  %s\n", statusTag(r.Run.Status), r.Run.ID, statusText(r.Run), display.Path(r.Run.Dir), r.Run.Command)
+	}
+	return errs
 }

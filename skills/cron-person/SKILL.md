@@ -3,11 +3,12 @@ name: cron-person
 description: >-
   Use when operating the cron-person CLI: authorizing per-directory .cronrc
   schedules, syncing them into the user crontab, running tasks manually,
-  inspecting task run history and captured logs, or stopping live runs.
+  inspecting task run history and captured logs, or stopping and pausing
+  tasks.
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-09 10:05
+  last_modified: 2026-11-09 10:20
   status: current
 ---
 
@@ -42,6 +43,13 @@ Stop a run that is hanging or running away:
 ```sh
 AGENT=1 cron-person task history ~/projects/app --limit 5
 cron-person task stop <run-id>
+```
+
+Hold a task off its schedule for two hours, stopping any run in progress, then resume it early:
+
+```sh
+cron-person task pause ~/projects/app ./scripts/backup.sh --for 2h
+cron-person task resume ~/projects/app ./scripts/backup.sh
 ```
 
 Investigate a failing task:
@@ -137,7 +145,7 @@ Removes the managed block from the user crontab, holding the same `crontab.lock`
 
 ### `cron-person task list`
 
-Lists tasks of authorized directories with readable schedules and their `.cronrc` source lines, naming skipped directories on stderr. Agent output: one tab-separated line per task with `dir`, `file`, `line`, `schedule`, `description`, and `cmd`.
+Lists tasks of authorized directories with readable schedules, their `.cronrc` source lines, task IDs, and when each paused task's pause ends, naming skipped directories on stderr. Agent output: one tab-separated line per task with `dir`, `file`, `line`, `task`, `schedule`, `description`, `paused_until` (RFC 3339, UTC, or `-` when not paused), and `cmd`.
 
 ### `cron-person task run <dir> <command...>`
 
@@ -163,7 +171,8 @@ Agent output: one tab-separated line per run with `id`, `task`, `status`, `exit`
 - `blocked`: the run was refused before starting, for example because the `.cronrc` changed; `task log` shows the reason.
 - `running`: the recording `cron-person` process is still alive.
 - `interrupted`: the recording process ended without recording an outcome.
-- `stopped`: the run was ended by `task stop`. `exit` is the task's own status when it exited on its own after SIGTERM, and `-` when it was killed by a signal.
+- `paused`: a scheduled run was skipped because the task is paused; `task log` shows when the pause ends.
+- `stopped`: the run was ended by `task stop` or `task pause`. `exit` is the task's own status when it exited on its own after SIGTERM, and `-` when it was killed by a signal.
 
 A task ID is derived from the directory and the exact command, so editing a command in `.cronrc` starts a separate history.
 
@@ -183,6 +192,18 @@ Stops live runs and waits for them to finish. Each run's recording process notic
 The command prints each stopped run and exits `1` when any run could not be stopped: an unknown ID, a run that already finished, or a run still recorded as running when the wait ends. Other runs are still stopped.
 
 Agent output: one tab-separated line per stopped run with `id`, `status`, `exit`, `dir`, and `cmd`.
+
+### `cron-person task pause <dir> <command...>`
+
+Stops the task's live runs, as `task stop` does, and skips its scheduled runs until the pause ends. The task is named by its directory and exact command, as `task list` shows them, and must be in an authorized `.cronrc`. Each scheduled run during the pause is recorded as `paused`, runs nothing, and exits `0`. A manual `task run` still runs the task, printing and recording a warning. Pausing a paused task replaces its end time. The crontab is unchanged, so the pause ends on its own; a pause belongs to the task ID, so changing the command in `.cronrc` leaves the new command unpaused.
+
+- `--for` (duration, required): how long to pause, in Go duration syntax such as `90m` or `48h`; must be positive.
+
+Agent output: `dir`, `task`, `paused_until` (RFC 3339, UTC), and `cmd` on one tab-separated line, followed by one `task stop` line per stopped run. Exits `1` when a live run could not be stopped; the pause still applies.
+
+### `cron-person task resume <dir> <command...>`
+
+Ends a task's pause so its scheduled runs start again. The directory does not need to be authorized. Fails with `task is not paused` when the task has no pause or it has already ended. Agent output: `dir`, `task`, `status: resumed`, and `cmd` on one tab-separated line.
 
 ### `cron-person exec <dir> [--] <command...>`
 

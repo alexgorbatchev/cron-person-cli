@@ -50,6 +50,9 @@ const (
 	StatusInterrupted Status = "interrupted"
 	// StatusStopped marks runs ended by a stop request (`task stop`).
 	StatusStopped Status = "stopped"
+	// StatusPaused marks scheduled runs skipped because the task is paused
+	// (`task pause`).
+	StatusPaused Status = "paused"
 )
 
 const (
@@ -58,6 +61,7 @@ const (
 	outputFile  = "output.log"
 	lockFile    = "run.lock"
 	stopFile    = "stop"
+	pauseFile   = "pause.json"
 	dirPerm     = 0o700
 	runIDLayout = "20060102T150405.000000Z"
 	// creationGrace protects a run whose directory exists before its lock does.

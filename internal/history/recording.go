@@ -179,6 +179,12 @@ func (r *Recording) Reject(reason error) error {
 	return r.close()
 }
 
+// Skip records that the run did not start because its task is paused.
+func (r *Recording) Skip(reason string) error {
+	r.run.Status, r.run.Error = StatusPaused, reason
+	return r.close()
+}
+
 func (r *Recording) close() error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
