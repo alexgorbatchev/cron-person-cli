@@ -185,3 +185,30 @@ func TestCLI_TaskListIgnoresAnUnreadablePause(t *testing.T) {
 		t.Fatalf("broken pause left behind: %v", err)
 	}
 }
+
+func TestCLI_TaskPauseReportsThePauseBeforeAStopFailure(t *testing.T) {
+	t.Setenv("AGENT", "0")
+	state, project := pauseProject(t)
+	if out, err := executeCommand("--store", state, "exec", project, "--", "true"); err != nil {
+		t.Fatalf("exec: %v\n%s", err, out)
+	}
+	log := history.New(history.DirForStore(state))
+	runs, err := log.List(history.Filter{TaskID: history.TaskID(project, "true")})
+	if err != nil || len(runs) != 1 {
+		t.Fatalf("runs = %+v, %v", runs, err)
+	}
+	meta := filepath.Join(history.DirForStore(state), runs[0].TaskID, runs[0].ID, "meta.json")
+	if err := os.WriteFile(meta, []byte("{"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	out, err := executeCommand("--store", state, "task", "pause", project, "true", "--for", "1h")
+	if err == nil || !strings.Contains(err.Error(), "the task is paused, but its live runs could not be listed") {
+		t.Fatalf("task pause = %v\n%s", err, out)
+	}
+	if !strings.HasPrefix(out, "[OK] Paused until ") {
+		t.Fatalf("pause line missing before the error:\n%s", out)
+	}
+	if _, paused, err := log.PausedUntil(history.TaskID(project, "true"), time.Now()); err != nil || !paused {
+		t.Fatalf("pause not in force: %v, %v", paused, err)
+	}
+}

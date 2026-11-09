@@ -77,18 +77,22 @@ func newTaskPauseCommand() *cobra.Command {
 			if err := log.Pause(dir, command, until); err != nil {
 				return err
 			}
-			results, err := runner.StopTask(cmd.Context(), log, history.TaskID(dir, command))
+			// The pause is in force from here on, so say so before stopping
+			// live runs, which can fail on their own.
+			agent := cobrahelptree.IsAgentMode()
+			if agent {
+				err = writeOutput(cmd, fmt.Sprintf("dir: %s\ttask: %s\tpaused_until: %s\tcmd: %s\n", display.Path(dir), history.TaskID(dir, command), until.UTC().Format(time.RFC3339), command))
+			} else {
+				err = writeOutput(cmd, fmt.Sprintf("[OK] Paused until %s\n     Task: %s  %s\n", until.Local().Format(humanTimeLayout), display.Path(dir), command))
+			}
 			if err != nil {
 				return err
 			}
-
-			agent := cobrahelptree.IsAgentMode()
-			var out strings.Builder
-			if agent {
-				fmt.Fprintf(&out, "dir: %s\ttask: %s\tpaused_until: %s\tcmd: %s\n", display.Path(dir), history.TaskID(dir, command), until.UTC().Format(time.RFC3339), command)
-			} else {
-				fmt.Fprintf(&out, "[OK] Paused until %s\n     Task: %s  %s\n", until.Local().Format(humanTimeLayout), display.Path(dir), command)
+			results, err := runner.StopTask(cmd.Context(), log, history.TaskID(dir, command))
+			if err != nil {
+				return fmt.Errorf("the task is paused, but its live runs could not be listed: %w", err)
 			}
+			var out strings.Builder
 			errs := writeStopResults(&out, results, agent)
 			if err := writeOutput(cmd, out.String()); err != nil {
 				return err

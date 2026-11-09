@@ -8,7 +8,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-09 13:00
+  last_modified: 2026-11-09 14:00
   status: current
 ---
 
@@ -195,11 +195,11 @@ Agent output: one tab-separated line per stopped run with `id`, `status`, `exit`
 
 ### `cron-person task pause <dir> <command...>`
 
-Stops the task's live runs, as `task stop` does, and skips its scheduled runs until the pause ends. The task is named by its directory and exact command, as `task list` shows them, and must be in an authorized `.cronrc`. Each scheduled run during the pause is recorded as `paused`, runs nothing, and exits `0`. A manual `task run` still runs the task, printing and recording a warning. Pausing a paused task replaces its end time. The crontab is unchanged, so the pause ends on its own, and the history pruning after each run deletes the ended pause record; a pause belongs to the task ID, so changing the command in `.cronrc` leaves the new command unpaused.
+Stops the task's live runs, as `task stop` does, and skips its scheduled runs until the pause ends. The task is named by its directory and exact command, as `task list` shows them, and must be in an authorized `.cronrc`. Each scheduled run during the pause is recorded as `paused`, runs nothing, and exits `0`; when the directory is no longer authorized, the run is recorded as `blocked` instead, as without a pause. A manual `task run` still runs the task, printing and recording a warning. Pausing a paused task replaces its end time. The crontab is unchanged, so the pause ends on its own, and the history pruning after each run deletes the ended pause record; a pause belongs to the task ID, so changing the command in `.cronrc` leaves the new command unpaused.
 
 - `--for` (duration, required): how long to pause, in Go duration syntax such as `90m` or `48h`; must be positive.
 
-Agent output: `dir`, `task`, `paused_until` (RFC 3339, UTC), and `cmd` on one tab-separated line, followed by one `task stop` line per stopped run. Exits `1` when a live run could not be stopped; the pause still applies.
+Agent output: `dir`, `task`, `paused_until` (RFC 3339, UTC), and `cmd` on one tab-separated line, followed by one `task stop` line per stopped run. The pause line is printed as soon as the pause is saved, before live runs are stopped. Exits `1` when live runs could not be listed or stopped; the pause still applies.
 
 ### `cron-person task resume <dir> <command...>`
 

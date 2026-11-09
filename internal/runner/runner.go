@@ -92,8 +92,22 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 		}
 	}
 
+	// A stop request cancels the task through the same graceful path as a
+	// signal to this process.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	cmd, err := r.prepare(ctx, absDir, opts)
+	if err != nil {
+		if rec != nil {
+			historyErr = errors.Join(historyErr, rec.Reject(err))
+		}
+		return errors.Join(err, historyErr, prune(opts))
+	}
+
 	// A paused task skips scheduled runs; a manual run is an explicit request
-	// and goes ahead with a warning.
+	// and goes ahead with a warning. Authorization is checked first, so a run
+	// that could not start anyway is recorded as blocked, not paused.
 	if opts.History != nil {
 		until, paused, err := opts.History.PausedUntil(history.TaskID(absDir, opts.Command), time.Now())
 		switch {
@@ -113,19 +127,6 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 				opts.OnWarning(msg)
 			}
 		}
-	}
-
-	// A stop request cancels the task through the same graceful path as a
-	// signal to this process.
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	cmd, err := r.prepare(ctx, absDir, opts)
-	if err != nil {
-		if rec != nil {
-			historyErr = errors.Join(historyErr, rec.Reject(err))
-		}
-		return errors.Join(err, historyErr, prune(opts))
 	}
 
 	cmd.Stdout = defaultWriter(opts.Stdout, os.Stdout)

@@ -124,3 +124,21 @@ func TestRunnerSkipsAPausedTaskWhenItsRunCannotBeRecorded(t *testing.T) {
 		t.Fatal("paused command executed")
 	}
 }
+
+func TestRunnerRecordsAnUnauthorizedPausedTaskAsBlocked(t *testing.T) {
+	st, dir := runnerProject(t, "@daily true\n")
+	log := history.New(filepath.Join(t.TempDir(), "runs"))
+	if err := log.Pause(dir, "touch ran", time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, ".cronrc"), []byte("@daily false\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	err := NewRunner(st).Exec(t.Context(), ExecOptions{Dir: dir, Command: "touch ran", History: log, Trigger: history.TriggerCron})
+	if err == nil || !strings.Contains(err.Error(), "changed .cronrc") {
+		t.Fatalf("Exec error = %v", err)
+	}
+	if run := onlyRun(t, log); run.Status != history.StatusBlocked {
+		t.Fatalf("run = %+v", run)
+	}
+}
