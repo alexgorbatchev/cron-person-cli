@@ -3,57 +3,58 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"regexp"
 	"strings"
 )
 
-var payloadAssignment = regexp.MustCompile(`(?m)^TOOL_EXECUTABLE="([^"$` + "`" + `\\\r\n]+)"\r?$`)
+func commandOutput(directory, executable string, args ...string) (string, error) {
+	command := exec.Command(executable, args...)
+	command.Dir = directory
+	output, err := command.Output()
+	if err != nil {
+		if failure, ok := err.(*exec.ExitError); ok {
+			return "", fmt.Errorf("%s failed: %s: %w", executable, strings.TrimSpace(string(failure.Stderr)), err)
+		}
+		return "", fmt.Errorf("running %s: %w", executable, err)
+	}
+	return strings.TrimSpace(string(output)), nil
+}
 
 func bootstrap(source, dotfiles string) (string, error) {
-	shim, err := os.ReadFile(filepath.Join(dotfiles, ".generated", "bin", "cron-person"))
+	directory, err := filepath.Abs(dotfiles)
 	if err != nil {
-		return "", fmt.Errorf("reading dotfiles shim: %w", err)
+		return "", fmt.Errorf("resolving dotfiles directory: %w", err)
 	}
-	match := payloadAssignment.FindStringSubmatch(string(shim))
-	if len(match) != 2 || strings.Count(string(shim), "TOOL_EXECUTABLE=") != 1 || !filepath.IsAbs(match[1]) {
-		return "", fmt.Errorf("shim must contain one literal absolute TOOL_EXECUTABLE path")
+	help, err := commandOutput(directory, "dotfiles", "tool", "dev", "use", "--help")
+	if err != nil || !strings.Contains(help, "--bin") {
+		return "", fmt.Errorf("update dotfiles to a version supporting 'tool dev use' before bootstrapping")
 	}
-	destination, err := filepath.EvalSymlinks(match[1])
+	source, err = filepath.Abs(source)
 	if err != nil {
-		return "", fmt.Errorf("resolving payload: %w", err)
+		return "", fmt.Errorf("resolving build path: %w", err)
 	}
-	binaries, err := filepath.EvalSymlinks(filepath.Join(dotfiles, ".generated", "binaries"))
-	if err != nil {
-		return "", fmt.Errorf("resolving binaries directory: %w", err)
-	}
-	if !strings.HasPrefix(destination, binaries+string(filepath.Separator)) {
-		return "", fmt.Errorf("payload must be inside dotfiles binaries directory")
-	}
-	data, err := os.ReadFile(source)
+	info, err := os.Stat(source)
 	if err != nil {
 		return "", fmt.Errorf("reading build: %w", err)
 	}
-	if len(data) == 0 {
+	if info.Size() == 0 {
 		return "", fmt.Errorf("build output is empty")
 	}
-	tmp := filepath.Join(dotfiles, ".tmp")
-	if err := os.MkdirAll(tmp, 0o755); err != nil {
-		return "", err
+	repository, err := os.Getwd()
+	if err != nil {
+		return "", fmt.Errorf("resolving source repository: %w", err)
 	}
-	tmp, err = os.MkdirTemp(tmp, "cron-person-bootstrap-*")
+	version, err := commandOutput(repository, source, "--version")
 	if err != nil {
 		return "", err
 	}
-	defer os.RemoveAll(tmp) // Best-effort cleanup after a failed install.
-	staged := filepath.Join(tmp, "cron-person")
-	if err := os.WriteFile(staged, data, 0o755); err != nil {
-		return "", err
+	_, err = commandOutput(directory, "dotfiles", "tool", "dev", "use", "cron-person",
+		"--bin", "cron-person="+source, "--source-repo", repository, "--version", version)
+	if err != nil {
+		return "", fmt.Errorf("registering development build: %w", err)
 	}
-	if err := os.Rename(staged, destination); err != nil {
-		return "", err
-	}
-	return destination, nil
+	return commandOutput(directory, "dotfiles", "tool", "which", "cron-person", "--bin")
 }
 
 func run() error {
@@ -65,7 +66,7 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println("Installed local cron-person build at " + destination)
+	fmt.Println("Registered local cron-person build at " + destination)
 	return nil
 }
 

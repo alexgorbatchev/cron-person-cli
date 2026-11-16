@@ -48,7 +48,7 @@ build:
     mkdir -p bin
     go build -o bin/cron-person ./cmd/cron-person
 
-# Build and replace the cron-person payload used by the dotfiles shim
+# Build and register a protected cron-person development override
 dev-bootstrap $dotfiles_dir=(env_var("HOME") / ".dotfiles"):
     mkdir -p bin
     revision="$(git rev-parse --short HEAD)" && go build -ldflags "-X main.version=999.0.0-dev.$revision" -o bin/cron-person ./cmd/cron-person
