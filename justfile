@@ -41,7 +41,8 @@ coverage:
 
 # Check code, dependencies, and the standard library for every released OS against the Go vulnerability database (needs network)
 vuln:
-    vc="$(go tool -n govulncheck)" && for goos in linux darwin windows; do echo "GOOS=$goos"; GOOS=$goos "$vc" -show version ./... || exit 1; done
+    # Set the analysis OS after building the host scanner; Go owns its executable until it exits.
+    for goos in linux darwin windows; do echo "GOOS=$goos"; go run -exec "env GOOS=$goos" golang.org/x/vuln/cmd/govulncheck -show version ./... || exit 1; done
 
 # Build binary into bin/
 build:
