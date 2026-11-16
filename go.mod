@@ -2,7 +2,7 @@ module github.com/alexgorbatchev/cron-person-cli
 
 go 1.26.2
 
-toolchain go1.26.10
+toolchain go1.26.11
 
 require (
 	github.com/alexgorbatchev/cobra-help-tree/v4 v4.0.0
