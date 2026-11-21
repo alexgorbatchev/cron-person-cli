@@ -52,7 +52,7 @@ build:
 # Build and register a protected cron-person development override
 dev-bootstrap $dotfiles_dir=(env_var("HOME") / ".dotfiles"):
     mkdir -p bin
-    revision="$(git rev-parse --short HEAD)" && go build -ldflags "-X main.version=999.0.0-dev.$revision" -o bin/cron-person ./cmd/cron-person
+    base="$(git describe --tags --abbrev=0 --match 'v[0-9]*' 2>/dev/null || echo v0.0.0)" && revision="$(git rev-parse --short HEAD)" && go build -ldflags "-X main.version=999.0.0-dev--${base#v}+$revision" -o bin/cron-person ./cmd/cron-person
     go run ./scripts/dev-bootstrap.go
 
 # Install binary to GOPATH bin directory
