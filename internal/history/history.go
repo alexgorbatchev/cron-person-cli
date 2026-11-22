@@ -48,6 +48,11 @@ const (
 	// recording an outcome. It is derived on read from the released run lock
 	// and never written.
 	StatusInterrupted Status = "interrupted"
+	// StatusStopped marks runs ended by a stop request (`task stop`).
+	StatusStopped Status = "stopped"
+	// StatusPaused marks scheduled runs skipped because the task is paused
+	// (`task pause`).
+	StatusPaused Status = "paused"
 )
 
 const (
@@ -55,6 +60,8 @@ const (
 	metaFile    = "meta.json"
 	outputFile  = "output.log"
 	lockFile    = "run.lock"
+	stopFile    = "stop"
+	pauseFile   = "pause.json"
 	dirPerm     = 0o700
 	runIDLayout = "20060102T150405.000000Z"
 	// creationGrace protects a run whose directory exists before its lock does.
@@ -64,6 +71,9 @@ const (
 
 // ErrNotFound is returned when a run ID does not exist in the log.
 var ErrNotFound = errors.New("run not found")
+
+// ErrNotRunning reports a stop request for a run that has already ended.
+var ErrNotRunning = errors.New("run is not running")
 
 // Run describes a single task execution.
 type Run struct {
@@ -248,11 +258,19 @@ type pruneCandidate struct {
 // Prune deletes finished runs older than MaxAge, then the oldest finished runs
 // until history fits within MaxBytes. Runs in progress and the newest run of
 // every task are always kept, so MaxBytes is a target that a single large run
-// can exceed.
+// can exceed. Pause records that have ended are removed too.
 func (l *Log) Prune(r Retention, now time.Time) error {
+	// Expired pauses are removed whatever the retention, since they no
+	// longer do anything.
+	pauseErr := l.pruneExpiredPauses(now)
 	if r.MaxAge <= 0 && r.MaxBytes <= 0 {
-		return nil
+		return pauseErr
 	}
+	return errors.Join(pauseErr, l.pruneRuns(r, now))
+}
+
+// pruneRuns removes finished runs past the retention limits.
+func (l *Log) pruneRuns(r Retention, now time.Time) error {
 	refs, err := l.scan(nil)
 	if err != nil {
 		return err

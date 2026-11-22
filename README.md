@@ -19,6 +19,8 @@
 - Sync active directory jobs into your user crontab with `cron-person crontab sync`.
 - When cron fires, `cron-person exec` sets the current working directory (and `PWD`) to the project folder, applies `.cronrc` environment variables, validates the authorization hash, and executes the scheduled command.
 - Run a task by hand with `cron-person task run`; press Ctrl+C to either stop it or leave it running in the background.
+- Stop a live run, from cron or `task run`, with `cron-person task stop <run-id>`.
+- Pause a task for a while with `cron-person task pause <dir> <command...> --for 2h`, which stops its live runs and skips its scheduled runs until the time is up; end it early with `cron-person task resume`.
 - Review recent runs with `cron-person task history`, read a run's captured output with `cron-person task log <run-id>`, and watch one in progress with `cron-person task log --follow <run-id>`.
 - Add the shell hook to your profile so your prompt alerts you whenever an unapproved or modified `.cronrc` is encountered.
 
@@ -35,6 +37,8 @@
 - **Background Processes**: Each task runs in its own process group (on Windows, a job object, so termination ends with Ctrl+Break and then the whole job). When the task exits but a process it started in the background keeps its output open, capture stops 10 seconds later and the run records a warning, so redirect the output of anything a task leaves running.
 - **Manual Runs and Ctrl+C**: `cron-person task run` hands the run to a separate recording process and relays its input and output. In a terminal, Ctrl+C asks whether to terminate the task too: `y` (or a second Ctrl+C) sends SIGTERM to the task's process group, then SIGKILL after 10 seconds; anything else returns your prompt and leaves the task running and recorded in the background, with end-of-input on its stdin. Without a terminal, Ctrl+C terminates the task.
 - **Task IDs**: A task ID is derived from the directory and the exact command, so editing a command in `.cronrc` starts a separate history for it.
+- **Stopping Runs**: `cron-person task stop <run-id>...` leaves a stop request in each run's directory. The run's recording process checks for it every 250 milliseconds and ends the task the same way as Ctrl+C in `task run`, so the run is recorded as `stopped` rather than signalled from outside. A stopped run exits `0`, so cron sends no mail for it.
+- **Pausing Tasks**: `cron-person task pause` stops a task's live runs and writes a pause record beside its run history. Scheduled runs during the pause start `cron-person exec` as usual, which records the run as `paused` and exits without running the command, so the crontab never changes and the pause ends on its own. The history pruning after each run deletes pause records that have ended. Manual `task run` still runs a paused task, with a warning.
 - **Refused and Interrupted Runs**: Runs refused by authorization checks are recorded as `blocked` with the reason. A run is listed as `interrupted` when its `cron-person` process ended without recording an outcome; liveness comes from a lock the operating system releases when that process exits, so a reused process ID cannot make a dead run look alive. If history cannot be written, the task still runs and `cron-person` exits with an error after it finishes.
 - **Invalid Configuration**: A configuration file that cannot be parsed never stops or fails a task. The run uses the default settings and records a warning, shown by `task history` and `task log`, so scheduled runs do not flood cron mail. Manual runs also print the warning, `cron-person status` reports it, and `cron-person crontab sync` refuses to install schedules until it is fixed.
 - **`.cronrc` Files**: A `.cronrc` must be a regular file (a symlink to one is followed) of at most 1 MiB. Any other file type named `.cronrc`, such as a directory, FIFO, or device, is treated as no `.cronrc` and never waited on, and a larger file is rejected by `allow` and reported as an error by commands that inspect it. A task command cannot contain a carriage return or NUL, and `allow` refuses a directory whose path contains a line break or NUL, because a crontab entry is a single line.
@@ -185,10 +189,13 @@ With `AGENT=1`, each directory is one tab-separated line with `dir`, `status`, `
 
 | Command | Arguments | Description |
 | :--- | :--- | :--- |
-| `list` | | List tasks across authorized directories with readable schedules, original expressions, commands, and `.cronrc` file paths and line numbers |
+| `list` | | List tasks across authorized directories with readable schedules, original expressions, commands, task IDs, pause end times, and `.cronrc` file paths and line numbers |
 | `run` | `<dir> <command...>` | Manually run task command inside directory context |
 | `history` | `[dir]` | List recent runs, newest first, optionally limited to one directory |
 | `log` | `<run-id>` | Show a run's status, timing, warnings, and captured output, optionally following it live |
+| `stop` | `<run-id>...` | Stop live runs: SIGTERM to each task's process group, SIGKILL after 10 seconds, recorded as `stopped`; waits up to 15 seconds |
+| `pause` | `<dir> <command...>` | Stop the task's live runs and skip its scheduled runs for `--for <duration>`; skipped runs are recorded as `paused` |
+| `resume` | `<dir> <command...>` | End a task's pause early |
 
 `cron-person task list` groups tasks by directory. Each task includes its source as `path/to/.cronrc:line`, where the line number counts every line in the file, including comments and blank lines. Schedule descriptions use English and 24-hour time; the original cron expression is retained beside each description. This lists authorized configuration rather than confirming what is installed in the system crontab. A store that cannot be read fails the command; a directory that cannot be listed is skipped with a warning (see Skipped Directories).
 
@@ -199,9 +206,10 @@ Directory: ~/projects/example
   Every 30 minutes [*/30 * * * *]
     Source: ~/projects/example/.cronrc:2
     Command: ./sync.sh
+    Task: 5bacafc67753
 ```
 
-With `AGENT=1`, each task is one tab-separated line containing `dir`, `file`, `line`, `schedule`, `description`, and `cmd` fields.
+A paused task adds a `Paused until:` line. With `AGENT=1`, each task is one tab-separated line containing `dir`, `file`, `line`, `task`, `schedule`, `description`, `paused_until` (`-` when not paused), and `cmd` fields.
 
 `cron-person task history` lists runs from both cron and `task run`:
 
@@ -212,7 +220,7 @@ Task Runs:
      Task: 5bacafc67753  ~/projects/example  ./sync.sh
 ```
 
-Statuses are `succeeded`, `failed`, `blocked`, `running`, and `interrupted`. With `AGENT=1`, each run is one tab-separated line containing `id`, `task`, `status`, `exit`, `trigger`, `started`, `duration_ms`, `warnings`, `dir`, and `cmd` fields; `exit` is `-` when the command produced no exit status.
+Statuses are `succeeded`, `failed`, `blocked`, `running`, `interrupted`, `stopped`, and `paused`. With `AGENT=1`, each run is one tab-separated line containing `id`, `task`, `status`, `exit`, `trigger`, `started`, `duration_ms`, `warnings`, `dir`, and `cmd` fields; `exit` is `-` when the command produced no exit status.
 
 | Flag | Short | Default | Description |
 | :--- | :--- | :--- | :--- |
