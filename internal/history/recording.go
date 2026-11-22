@@ -41,6 +41,8 @@ type Recording struct {
 	written   int64
 	stdout    *streamWriter
 	stderr    *streamWriter
+	// stopped is set when the task was ended by a stop request.
+	stopped bool
 }
 
 // StartOptions describes a run being recorded.
@@ -131,10 +133,24 @@ func (r *Recording) Stdout() io.Writer { return r.stdout }
 func (r *Recording) Stderr() io.Writer { return r.stderr }
 
 // Finish records the command's outcome. runErr is the error returned by
-// running the command, or nil on success.
+// running the command, or nil on success. A run marked Stopped is recorded as
+// stopped whatever runErr says.
 func (r *Recording) Finish(runErr error) error {
+	r.mu.Lock()
+	stopped := r.stopped
+	r.mu.Unlock()
 	var exitErr *exec.ExitError
 	switch {
+	case stopped:
+		r.run.Status, r.run.Error = StatusStopped, "stopped on request"
+		// A task that handles SIGTERM may still exit with a status of its own.
+		if runErr == nil {
+			code := 0
+			r.run.ExitCode = &code
+		} else if errors.As(runErr, &exitErr) && exitErr.ExitCode() >= 0 {
+			code := exitErr.ExitCode()
+			r.run.ExitCode = &code
+		}
 	case runErr == nil:
 		code := 0
 		r.run.Status, r.run.ExitCode = StatusSucceeded, &code

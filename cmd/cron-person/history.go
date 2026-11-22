@@ -195,7 +195,7 @@ func statusTag(s history.Status) string {
 	switch s {
 	case history.StatusSucceeded:
 		return "[OK]"
-	case history.StatusRunning:
+	case history.StatusRunning, history.StatusStopped:
 		return "[INFO]"
 	default:
 		return "[ERROR]"

@@ -2,12 +2,12 @@
 name: cron-person
 description: >-
   Use when operating the cron-person CLI: authorizing per-directory .cronrc
-  schedules, syncing them into the user crontab, running tasks manually, or
-  inspecting task run history and captured logs.
+  schedules, syncing them into the user crontab, running tasks manually,
+  inspecting task run history and captured logs, or stopping live runs.
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-03 17:11
+  last_modified: 2026-11-09 10:05
   status: current
 ---
 
@@ -35,6 +35,13 @@ Authorize a project and schedule its tasks:
 cron-person dir check ~/projects/app   # validate syntax and list tasks
 cron-person allow ~/projects/app       # record the .cronrc SHA-256 hash
 cron-person crontab sync               # install authorized tasks into the user crontab
+```
+
+Stop a run that is hanging or running away:
+
+```sh
+AGENT=1 cron-person task history ~/projects/app --limit 5
+cron-person task stop <run-id>
 ```
 
 Investigate a failing task:
@@ -156,6 +163,7 @@ Agent output: one tab-separated line per run with `id`, `task`, `status`, `exit`
 - `blocked`: the run was refused before starting, for example because the `.cronrc` changed; `task log` shows the reason.
 - `running`: the recording `cron-person` process is still alive.
 - `interrupted`: the recording process ended without recording an outcome.
+- `stopped`: the run was ended by `task stop`. `exit` is the task's own status when it exited on its own after SIGTERM, and `-` when it was killed by a signal.
 
 A task ID is derived from the directory and the exact command, so editing a command in `.cronrc` starts a separate history.
 
@@ -167,6 +175,14 @@ Prints a run's metadata followed by its captured output. Each output line is pre
 - `--follow`, `-f` (bool): after the existing output, keep printing output as it is captured until the run finishes, then print how it ended. Ctrl+C stops following without affecting the run.
 
 Agent output: `id`, `task`, `status`, `exit`, `trigger`, `started`, `duration_ms`, `dir`, `cmd`, `error` when present, one `warning` per warning, `truncated: true` when output was cut at `history.max_run_mb`, then `output:` followed by the raw log lines. With `--follow`, the output is followed by `final_status`, `final_exit`, and `final_duration_ms`.
+
+### `cron-person task stop <run-id>...`
+
+Stops live runs and waits for them to finish. Each run's recording process notices the request within a quarter second and terminates the task's process group as described under `task run` (SIGTERM, then SIGKILL 10 seconds later), then records the run as `stopped`. A stopped run is an outcome, not a failure: the recording process exits `0`, so cron sends no mail for it. Runs stop concurrently, and the command waits at most 15 seconds for all of them.
+
+The command prints each stopped run and exits `1` when any run could not be stopped: an unknown ID, a run that already finished, or a run still recorded as running when the wait ends. Other runs are still stopped.
+
+Agent output: one tab-separated line per stopped run with `id`, `status`, `exit`, `dir`, and `cmd`.
 
 ### `cron-person exec <dir> [--] <command...>`
 

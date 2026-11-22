@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -41,11 +42,19 @@ type ExecOptions struct {
 	// Grace bounds two waits: how long a cancelled task may take to exit after
 	// SIGTERM before its process group is killed, and how long output is still
 	// captured after the task exits while a background process it started keeps
-	// the output streams open. Zero selects defaultGrace.
+	// the output streams open. Zero selects DefaultGrace.
 	Grace time.Duration
+	// StopPoll is how often a recorded run checks for a stop request (`task
+	// stop`). Zero selects DefaultStopPoll.
+	StopPoll time.Duration
 }
 
-const defaultGrace = 10 * time.Second
+const (
+	// DefaultGrace is the grace period when ExecOptions.Grace is zero.
+	DefaultGrace = 10 * time.Second
+	// DefaultStopPoll is how often a recorded run checks for a stop request.
+	DefaultStopPoll = 250 * time.Millisecond
+)
 
 // Runner executes tasks within the context of an authorized directory and its .cronrc.
 type Runner struct {
@@ -80,6 +89,11 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 		}
 	}
 
+	// A stop request cancels the task through the same graceful path as a
+	// signal to this process.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	cmd, err := r.prepare(ctx, absDir, opts)
 	if err != nil {
 		if rec != nil {
@@ -107,9 +121,25 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 
 	grace := opts.Grace
 	if grace <= 0 {
-		grace = defaultGrace
+		grace = DefaultGrace
 	}
+	// stopped and watchErr are written before watchDone closes.
+	var stopped bool
+	var watchErr error
+	watchDone := make(chan struct{})
+	finished := make(chan struct{})
+	go func() {
+		defer close(watchDone)
+		if rec != nil {
+			stopped, watchErr = watchStop(rec, cmp.Or(opts.StopPoll, DefaultStopPoll), finished, cancel)
+		}
+	}()
 	runErr := runGroup(cmd, grace)
+	close(finished)
+	<-watchDone
+	if stopped {
+		rec.Stopped()
+	}
 	if errors.Is(runErr, exec.ErrWaitDelay) {
 		if rec != nil {
 			rec.Warn(fmt.Sprintf("output stayed open %s after the task exited, so capture stopped; redirect the output of background processes", grace))
@@ -120,9 +150,37 @@ func (r *Runner) Exec(ctx context.Context, opts ExecOptions) error {
 		runErr = fmt.Errorf("task failed in %s: %w", absDir, runErr)
 	}
 	if rec != nil {
-		historyErr = rec.Finish(runErr)
+		historyErr = errors.Join(rec.Finish(runErr), watchErr)
+	}
+	if stopped {
+		// A requested stop is an outcome, not a failure: the run records it
+		// and cron sends no mail for it.
+		runErr = nil
 	}
 	return errors.Join(runErr, historyErr, prune(opts))
+}
+
+// watchStop polls rec for a stop request until finished closes, and cancels
+// the task when one appears. A failure to check is returned after the task
+// ends and never stops it.
+func watchStop(rec *history.Recording, poll time.Duration, finished <-chan struct{}, cancel func()) (bool, error) {
+	ticker := time.NewTicker(poll)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-finished:
+			return false, nil
+		case <-ticker.C:
+		}
+		requested, err := rec.StopRequested()
+		if err != nil {
+			return false, fmt.Errorf("watching for a stop request: %w", err)
+		}
+		if requested {
+			cancel()
+			return true, nil
+		}
+	}
 }
 
 // runGroup runs cmd so that cancellation reaches every process the task

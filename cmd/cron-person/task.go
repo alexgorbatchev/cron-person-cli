@@ -11,12 +11,13 @@ import (
 )
 
 func newTaskCommand() *cobra.Command {
-	cmd := newGroupCommand("task", "Inspect and trigger scheduled tasks")
+	cmd := newGroupCommand("task", "Inspect, trigger, and stop scheduled tasks")
 
 	cmd.AddCommand(newTaskListCommand())
 	cmd.AddCommand(newTaskRunCommand())
 	cmd.AddCommand(newTaskHistoryCommand())
 	cmd.AddCommand(newTaskLogCommand())
+	cmd.AddCommand(newTaskStopCommand())
 
 	return cmd
 }
