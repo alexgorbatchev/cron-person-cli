@@ -106,6 +106,7 @@ func newRootCommand() *cobra.Command {
 	rootCmd.PersistentFlags().String("config", "", "Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)")
 
 	// Subcommands
+	rootCmd.AddCommand(newDashboardCommand())
 	rootCmd.AddCommand(newDirCommand())
 	rootCmd.AddCommand(newCrontabCommand())
 	rootCmd.AddCommand(newTaskCommand())

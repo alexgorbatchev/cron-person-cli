@@ -1,0 +1,4 @@
+@import 'tailwindcss';
+@import '@alexgorbatchev/shadcn/theme.css';
+@source './components';
+@source './node_modules/@alexgorbatchev/shadcn/dist';

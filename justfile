@@ -49,6 +49,10 @@ build:
     mkdir -p bin
     go build -o bin/cron-person ./cmd/cron-person
 
+# Regenerate the embedded dashboard assets after editing web sources
+dashboard-build:
+    cd web && bun install --frozen-lockfile && bun run check && bun run build
+
 # Build and register a protected cron-person development override
 dev-bootstrap $dotfiles_dir=(env_var("HOME") / ".dotfiles"):
     mkdir -p bin

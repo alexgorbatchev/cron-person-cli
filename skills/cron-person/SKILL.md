@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-22 14:18
+  last_modified: 2026-11-23 12:00
   status: current
 ---
 
@@ -28,6 +28,12 @@ A `.cronrc` must be a regular file (symlinks are followed) of at most 1 MiB. Oth
 Commands over every tracked directory leave out any directory whose tasks cannot run (its `.cronrc` changed since approval, was removed, is not a regular file, cannot be read, or no longer parses; its path contains a line break; or its store entry is not the directory's canonical path, which `cron-person deny <dir>` removes) and report or install the remaining directories and exit 0. `task list`, `crontab show`, and `crontab sync` name each skipped directory on stderr as `[WARN] skipped <dir>: <reason>` (`WARN: ...` in agent mode); `status` shows the reason on that directory's row instead.
 
 ## Workflows
+
+### Local dashboard
+
+Run `cron-person dashboard` to serve the bundled browser UI at `127.0.0.1:8080`. `--port <port>` (int) changes the listening port; `--port 0` chooses an available port. Open the printed URL, including its session token fragment. Stop the server with Ctrl-C. The dashboard honors `--store` and `--config`; it does not change configuration settings or synchronize the system crontab.
+
+Open an absolute directory path to read or create its `.cronrc`. Edit task lines, environment assignments, and comments, then save. Saving validates cron syntax and detects changes since the last load. Allow explicitly approves the current file; Deny revokes its authorization. Delete configuration asks for confirmation, revokes authorization, and removes only `.cronrc`, preserving the directory. Saving never approves a file automatically. After approval, use `cron-person crontab sync` to update installed schedules. The UI and all runtime assets are embedded; Node and Bun are not needed to run it. The API requires the session token and rejects foreign origins.
 
 Authorize a project and schedule its tasks:
 

@@ -12,6 +12,8 @@ bin/
 .tmp/
 .codegraph/
 .cache/
+.state/
+node_modules/
 .pi-subagents/
 dist/
 build/
