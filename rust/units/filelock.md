@@ -1,14 +1,14 @@
 ---
 created_on: 2026-11-25 08:01
-last_modified: 2026-11-25 08:37
+last_modified: 2026-11-25 09:11
 status: current
 ---
 
 # Filelock migration ledger
 
 This is the implementation and validation record for the parent integrating the
-native lock library. Implementation and Linux unit validation are ready for
-integration. Complete acceptance remains open: this Linux host cannot execute
+native lock library. Implementation and Linux unit validation are published in
+`db231f9`. Complete acceptance remains open: this Linux host cannot execute
 the required native macOS and Windows tests.
 
 ## Ownership and checkpoint
@@ -122,6 +122,11 @@ Coverage is 278/289 lines (96.19%), 41/43 functions (95.35%), 335/368 regions
 or included in Linux coverage. The final coverage run reports 116 native
 assertions in 1.540s (1.78s test including helper compilation).
 
+The native process launcher uses `uv run --no-project python` from the repository
+root and its local `.venv`. Provision a missing environment with `uv venv .venv`;
+preserve an existing environment. The launcher change preserves all 116 native
+assertions (1.568 s harness; 2.44 s Cargo command). No library behavior changes.
+
 Exact coverage reproduction, with the crate argument before the shared options:
 
 ```sh
@@ -169,11 +174,11 @@ Parent next steps:
 
 | Gap | Evidence / attempted work | Next action |
 | --- | --- | --- |
-| Native macOS/Windows | Linux-only host, no native runner or Wine. Darwin arm64 and Windows amd64 checks pass; Windows one-byte/sharing tests prepared. | Run the default and no-default-feature cargo tests natively with Go/python3 available. Record OS/architecture/filesystem, native errno bytes, one-byte range, sharing, inheritance and exit cleanup. Missing native evidence blocks complete platform acceptance. |
+| Native macOS/Windows | Linux-only host, no native runner or Wine. Darwin arm64 and Windows amd64 checks pass; Windows one-byte/sharing tests prepared. | Run the default and no-default-feature cargo tests natively with Go and the uv-managed root Python environment available. Record OS/architecture/filesystem, native errno bytes, one-byte range, sharing, inheritance and exit cleanup. Missing native evidence blocks complete platform acceptance. |
 | Six release targets | Installed relevant triples: Linux amd64, Darwin arm64, Windows amd64. No Linux arm64, Darwin amd64 or Windows arm64 build is claimed. | Parent's full six-target matrix compiles/links each target; check alone is not linking/native evidence. |
 | Uncommon errors / filesystem variants | Common real errors and joined errors match; Unix adapts native errno casing. Unusual errno text, network mount semantics and Windows non-UTF-8 input conversion are not exhaustively qualified. | Compare encountered native errno bytes. If NFS/CIFS is in supported acceptance scope, run the process suite on the actual mount. Preserve errno distinctions. |
 | Exceptional faults | Failure handling is implemented. Closed/O_PATH failures and repeated-release joins execute; no live-file close failure, ENOLCK exhaustion or injected EINTR is claimed. | Add OS-controlled fault evidence through the owning integration workflow; these remain uncovered evidence, never simulated success. |
-| Application integration | Plain library has no bridge C symbols. Root/app code is untouched under ownership rules. | Parent wires store/history and runs their full behavioral acceptance; no Go child remains in the shipped path. |
+| Application integration | Plain library has no bridge C symbols. Native hook output diagnostics consume its OS error rendering. Store/history integration remains open. | Parent wires store/history and runs their full behavioral acceptance; no Go child remains in the shipped path. |
 
 No source API is an expected-result stub. Native macOS/Windows and app
 integration are material external acceptance dependencies, not completed work.
