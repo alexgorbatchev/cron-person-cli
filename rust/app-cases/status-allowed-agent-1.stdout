@@ -1,0 +1,7 @@
+version: 0.0.1
+tracked_dirs: 1
+allowed_dirs: 1
+total_tasks: 2
+config: [CWD]/fixture/config/cron-person/config.json
+config_status: defaults
+dir: ~/project	status: allowed	hash: 81d7365c62babc6460f45be48d7657232b9d435db3817302cd2dbcd7aaa3f584	tasks: 2

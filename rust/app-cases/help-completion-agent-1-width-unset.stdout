@@ -1,0 +1,15 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person completion
+summary: Generate the autocompletion script for the specified shell
+description: Generate the autocompletion script for cron-person for the specified shell.
+  See each sub-command's help for details on how to use the generated script.
+usage: cron-person completion [flags] [command]
+subcommands:
+  - bash: Generate the autocompletion script for bash
+  - fish: Generate the autocompletion script for fish
+  - powershell: Generate the autocompletion script for powershell
+  - zsh: Generate the autocompletion script for zsh
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for completion
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

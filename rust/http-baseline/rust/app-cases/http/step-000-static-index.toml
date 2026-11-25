@@ -1,0 +1,17 @@
+[request]
+method = "GET"
+path = "/"
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-000-static-index"
+
+[response]
+status = 200
+
+[response.headers]
+accept-ranges = "bytes"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "text/html; charset=utf-8"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

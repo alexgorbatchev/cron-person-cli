@@ -1,0 +1,16 @@
+[request]
+method = "GET"
+path = "/api/%E6%97%A5%E6%9C%AC%E8%AA%9E"
+
+[request.headers]
+X-Scenario-Step = "step-006-missing-token"
+
+[response]
+status = 401
+
+[response.headers]
+cache-control = "no-store"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "text/plain; charset=utf-8"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

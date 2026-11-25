@@ -1,0 +1,20 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person completion bash
+summary: Generate the autocompletion script for bash
+description: Generate the autocompletion script for the bash shell.
+  This script depends on the 'bash-completion' package.
+  If it is not installed already, you can install it via your OS's package manager.
+  To load completions in your current shell session:
+  source <(cron-person completion bash)
+  To load completions for every new session, execute once:
+  #### Linux:
+  cron-person completion bash > /etc/bash_completion.d/cron-person
+  #### macOS:
+  cron-person completion bash > $(brew --prefix)/etc/bash_completion.d/cron-person
+  You will need to start a new shell for this setup to take effect.
+usage: cron-person completion bash
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for bash
+  --no-descriptions bool: disable completion descriptions
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

@@ -23,3 +23,4 @@ coverage.out
 .DS_Store
 *.swp
 *.swo
+/rust/**/target/

@@ -1,0 +1,7 @@
+version: 0.0.1
+tracked_dirs: 1
+allowed_dirs: 0
+total_tasks: 0
+config: [CWD]/fixture/config/cron-person/config.json
+config_status: defaults
+dir: ~/project	status: changed	hash: 81d7365c62babc6460f45be48d7657232b9d435db3817302cd2dbcd7aaa3f584	problem: .cronrc changed since it was allowed: run 'cron-person allow ~/project' to approve it

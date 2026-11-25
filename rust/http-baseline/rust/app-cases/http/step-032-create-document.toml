@@ -1,0 +1,18 @@
+[request]
+method = "PUT"
+path = "/api/document"
+body = '{"dir":"{project}","content":"# Fixture\nGREETING=\"hello world\"\n* * * * * printf \"%s\\n\" \"$GREETING\"\n@daily echo daily\n","revision":"e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855","status":"allowed"}'
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-032-create-document"
+
+[response]
+status = 200
+
+[response.headers]
+cache-control = "no-store"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "application/json"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

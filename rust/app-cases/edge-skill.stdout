@@ -1,0 +1,7 @@
+Install the cron-person skill using the Skills CLI:
+
+  npx skills add alexgorbatchev/cron-person-cli --skill cron-person
+
+Skill:
+
+  https://github.com/alexgorbatchev/cron-person-cli/tree/main/skills/cron-person

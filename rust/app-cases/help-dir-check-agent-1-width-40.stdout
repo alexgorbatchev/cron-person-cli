@@ -1,0 +1,11 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person dir check
+summary: Validate syntax and parseability of a .cronrc file
+description: Parses .cronrc in the given directory and prints detected schedule lines and environment variables.
+usage: cron-person dir check [path] [flags]
+args:
+  - [path]: Directory containing .cronrc to check (defaults to current directory)
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for check
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

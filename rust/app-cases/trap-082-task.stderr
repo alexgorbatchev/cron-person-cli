@@ -1,0 +1,1 @@
+ERR: directory ~/project is unauthorized: run 'cron-person allow ~/project' to authorize

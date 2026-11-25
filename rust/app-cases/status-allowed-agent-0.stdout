@@ -1,0 +1,10 @@
+[OK] cron-person system status: active
+  Version:              0.0.1
+  Tracked Directories:  1
+  Allowed Directories:  1
+  Active Tasks:         2
+  Configuration:        [CWD]/fixture/config/cron-person/config.json (defaults)
+
+Tracked Directories:
+  [OK] ~/project (allowed, 2 tasks)
+     Hash: 81d7365c62babc6460f45be48d7657232b9d435db3817302cd2dbcd7aaa3f584

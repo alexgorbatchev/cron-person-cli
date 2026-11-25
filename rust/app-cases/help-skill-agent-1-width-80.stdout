@@ -1,0 +1,8 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person skill
+summary: Print how to install the agent skill
+usage: cron-person skill [flags]
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for skill
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

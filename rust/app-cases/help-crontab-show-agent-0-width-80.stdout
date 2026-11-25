@@ -1,0 +1,13 @@
+Preview generated crontab block without modifying crontab
+
+Usage:
+  cron-person crontab show [flags]
+
+Flags:
+  -h, --help   help for show
+
+Global Flags:
+      --config string   Path to custom configuration file (default:
+                        $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default:
+                        $XDG_STATE_HOME/cron-person/allowed.json)

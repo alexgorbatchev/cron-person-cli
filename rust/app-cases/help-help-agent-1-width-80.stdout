@@ -1,0 +1,10 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person help
+summary: Help about any command
+description: Help provides help for any command in the application.
+  Simply type cron-person help [path to command] for full details.
+usage: cron-person help [command] [flags]
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for help
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

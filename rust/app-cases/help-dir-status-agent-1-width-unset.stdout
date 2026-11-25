@@ -1,0 +1,11 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person dir status
+summary: Show status and tasks for a specific directory
+description: Inspects authorization status, recorded hash, and task list for a directory.
+usage: cron-person dir status [path] [flags]
+args:
+  - [path]: Directory to inspect (defaults to current directory)
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for status
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

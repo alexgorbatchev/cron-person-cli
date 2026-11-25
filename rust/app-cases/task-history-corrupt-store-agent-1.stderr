@@ -1,0 +1,1 @@
+ERR: loading store from [CWD]/fixture/state/cron-person/allowed.json: invalid character 'o' in literal null (expecting 'u')

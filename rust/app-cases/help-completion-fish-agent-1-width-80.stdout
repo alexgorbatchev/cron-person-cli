@@ -1,0 +1,15 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person completion fish
+summary: Generate the autocompletion script for fish
+description: Generate the autocompletion script for the fish shell.
+  To load completions in your current shell session:
+  cron-person completion fish | source
+  To load completions for every new session, execute once:
+  cron-person completion fish > ~/.config/fish/completions/cron-person.fish
+  You will need to start a new shell for this setup to take effect.
+usage: cron-person completion fish [flags]
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for fish
+  --no-descriptions bool: disable completion descriptions
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

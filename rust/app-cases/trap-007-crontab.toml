@@ -1,0 +1,4 @@
+bin.name = "cron-person"
+args = ["crontab", "straße"]
+status.code = 1
+fs.sandbox = true

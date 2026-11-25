@@ -1,0 +1,11 @@
+Run:        <run-id>
+Task:       <task:echo recorded>
+Directory:  ~/project
+Command:    echo recorded
+Trigger:    manual
+Status:     succeeded
+Started:    [..] UTC
+Duration:   1s
+
+Output:
+[err] second

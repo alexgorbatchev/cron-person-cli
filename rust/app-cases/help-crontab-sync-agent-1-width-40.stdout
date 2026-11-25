@@ -1,0 +1,10 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person crontab sync
+summary: Compile authorized directory jobs and install into user crontab
+description: Compiles all authorized tasks into a managed block and updates system crontab via crontab(1).
+usage: cron-person crontab sync [flags]
+mutates_db: true
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for sync
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

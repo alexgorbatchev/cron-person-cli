@@ -1,0 +1,6 @@
+Directory: ~/project
+Status:    unauthorized
+
+Tasks (2):
+  1. [* * * * *] printf "%s\n" "$GREETING"
+  2. [@daily] echo daily

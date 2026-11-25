@@ -1,0 +1,17 @@
+Execute a command in an authorized directory with cwd and .cronrc environment
+
+Usage:
+  cron-person exec <dir> [--] <command...> [flags]
+
+Arguments:
+  <dir>               Target directory path
+  <command...>        Shell command to execute in directory
+
+Flags:
+  -h, --help   help for exec
+
+Global Flags:
+      --config string   Path to custom configuration file (default:
+                        $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default:
+                        $XDG_STATE_HOME/cron-person/allowed.json)

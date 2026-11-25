@@ -1,0 +1,17 @@
+[request]
+method = "GET"
+path = "/api/%F0%9F%91%A8%E2%80%8D%F0%9F%91%A9%E2%80%8D%F0%9F%91%A7%20family?dir=%7Bproject%7D"
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-026-updated-read"
+
+[response]
+status = 404
+
+[response.headers]
+cache-control = "no-store"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "text/plain; charset=utf-8"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

@@ -1,0 +1,19 @@
+Generate the autocompletion script for powershell.
+
+To load completions in your current shell session:
+
+	cron-person completion powershell | Out-String | Invoke-Expression
+
+To load completions for every new session, add the output of the above command
+to your powershell profile.
+
+Usage:
+  cron-person completion powershell [flags]
+
+Flags:
+  -h, --help              help for powershell
+      --no-descriptions   disable completion descriptions
+
+Global Flags:
+      --config string   Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

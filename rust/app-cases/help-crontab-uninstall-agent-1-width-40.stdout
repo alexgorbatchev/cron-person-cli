@@ -1,0 +1,10 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person crontab uninstall
+summary: Remove cron-person managed block from system crontab
+description: Strips the managed block from the active user crontab while keeping other user jobs intact.
+usage: cron-person crontab uninstall [flags]
+mutates_db: true
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for uninstall
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

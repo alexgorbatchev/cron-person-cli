@@ -1,0 +1,13 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person task log
+summary: Show the details and captured output of a task run
+description: Prints run metadata followed by the captured output, with each line prefixed [out] or [err] by stream.
+usage: cron-person task log <run-id> [flags]
+args:
+  - <run-id>: Run ID shown by task history
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -f, --follow bool: Keep printing output as it is captured until the run finishes
+  -h, --help bool: help for log
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)
+  --tail int: Show only the last N output lines (0 shows all)

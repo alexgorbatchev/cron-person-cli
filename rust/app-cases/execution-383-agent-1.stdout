@@ -1,0 +1,12 @@
+id: <run-id>
+task: <task:echo recorded>
+status: succeeded
+exit: 0
+trigger: manual
+started: [..]
+duration_ms: 1000
+dir: ~/project
+cmd: echo recorded
+output:
+[out] first
+[err] second

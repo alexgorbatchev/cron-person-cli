@@ -1,0 +1,5 @@
+# >>> cron-person managed block (DO NOT EDIT DIRECTLY) >>>
+# Directory: [CWD]/fixture/home/project
+* * * * * '[EXE]' --store '[CWD]/fixture/state/cron-person/allowed.json' --config '[CWD]/fixture/config/cron-person/config.json' exec '[CWD]/fixture/home/project' -- 'printf "'\%'s\n" "$GREETING"'
+@daily '[EXE]' --store '[CWD]/fixture/state/cron-person/allowed.json' --config '[CWD]/fixture/config/cron-person/config.json' exec '[CWD]/fixture/home/project' -- 'echo daily'
+# <<< cron-person managed block <<<

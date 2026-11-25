@@ -1,0 +1,16 @@
+Show status and tasks for a specific directory
+
+Usage:
+  cron-person dir status [path] [flags]
+
+Arguments:
+  [path]              Directory to inspect (defaults to current directory)
+
+Flags:
+  -h, --help   help for status
+
+Global Flags:
+      --config string   Path to custom configuration file (default:
+                        $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default:
+                        $XDG_STATE_HOME/cron-person/allowed.json)

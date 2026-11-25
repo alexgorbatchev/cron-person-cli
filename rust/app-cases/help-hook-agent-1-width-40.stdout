@@ -1,0 +1,11 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person hook
+summary: Generate shell integration hook script
+description: Prints hook script for bash, zsh, or fish for direnv-like prompt warnings on unauthorized .cronrc files.
+usage: cron-person hook <bash|zsh|fish> [flags]
+args:
+  - <bash|zsh|fish>: Target shell name
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for hook
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

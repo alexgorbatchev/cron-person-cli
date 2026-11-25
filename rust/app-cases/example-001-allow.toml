@@ -1,0 +1,4 @@
+bin.name = "cron-person"
+args = ["allow"]
+status.code = 0
+fs.sandbox = true

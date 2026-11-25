@@ -1,0 +1,17 @@
+[request]
+method = "GET"
+path = "/api/directories"
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-023-allowed-directories"
+
+[response]
+status = 200
+
+[response.headers]
+cache-control = "no-store"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "application/json"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

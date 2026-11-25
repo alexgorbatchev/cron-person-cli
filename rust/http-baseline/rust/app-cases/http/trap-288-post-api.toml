@@ -1,0 +1,18 @@
+[request]
+method = "POST"
+path = "/api/%C4%B0stanbul"
+body = '{"dir":"{project}","content":"# updated\n*/5 * * * * echo updated\n","revision":"bb4b6b4eccdecb18ac7ded583f2eb1e9babfcad9ef0340cae240d16243726a51","status":"denied"}'
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-028-deny-document"
+
+[response]
+status = 404
+
+[response.headers]
+cache-control = "no-store"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "text/plain; charset=utf-8"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

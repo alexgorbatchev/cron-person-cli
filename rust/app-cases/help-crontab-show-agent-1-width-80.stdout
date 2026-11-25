@@ -1,0 +1,9 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person crontab show
+summary: Preview generated crontab block without modifying crontab
+description: Prints the formatted crontab block that would be written to the system crontab.
+usage: cron-person crontab show [flags]
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for show
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

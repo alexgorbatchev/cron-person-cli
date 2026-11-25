@@ -1,0 +1,11 @@
+Compile authorized directory jobs and install into user crontab
+
+Usage:
+  cron-person crontab sync [flags]
+
+Flags:
+  -h, --help   help for sync
+
+Global Flags:
+      --config string   Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

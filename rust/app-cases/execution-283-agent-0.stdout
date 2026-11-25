@@ -1,0 +1,4 @@
+Task Runs:
+  [OK] <run-id>  succeeded
+     Started: [..] UTC  Duration: 1s  Trigger: manual
+     Task: <task:echo recorded>  ~/project  echo recorded

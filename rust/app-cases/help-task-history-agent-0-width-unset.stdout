@@ -1,0 +1,16 @@
+List recent task runs, newest first
+
+Usage:
+  cron-person task history [dir] [flags]
+
+Arguments:
+  [dir]               Show only runs of tasks in this directory (defaults to all directories)
+
+Flags:
+  -h, --help          help for history
+      --limit int     Maximum number of runs to show (0 shows all) (default 20)
+      --task string   Show only runs of this task ID
+
+Global Flags:
+      --config string   Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

@@ -1,0 +1,12 @@
+Serve the bundled local CRUD dashboard
+
+Usage:
+  cron-person dashboard [flags]
+
+Flags:
+  -h, --help       help for dashboard
+      --port int   Local dashboard port (0 chooses an available port) (default 8080)
+
+Global Flags:
+      --config string   Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

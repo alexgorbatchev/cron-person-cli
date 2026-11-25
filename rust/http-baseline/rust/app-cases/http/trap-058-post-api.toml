@@ -1,0 +1,18 @@
+[request]
+method = "POST"
+path = "/api/%C4%B1l%C4%B1k%20%C4%B1rmak"
+body = "{}"
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-011-directories-wrong-method"
+
+[response]
+status = 404
+
+[response.headers]
+cache-control = "no-store"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "text/plain; charset=utf-8"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

@@ -1,0 +1,7 @@
+bin.name = "cron-person"
+args = ["deny", "."]
+env.add.AGENT = "0"
+env.add.COLUMNS = "80"
+env.add.CRON_FIXTURE = "empty"
+status.code = 0
+fs.sandbox = true

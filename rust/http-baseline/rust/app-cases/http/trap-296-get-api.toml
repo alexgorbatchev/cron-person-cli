@@ -1,0 +1,17 @@
+[request]
+method = "GET"
+path = "/api/%F0%9F%91%8D%F0%9F%8F%BD%20thumbs?dir=%7Bproject%7D"
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-029-denied-read"
+
+[response]
+status = 404
+
+[response.headers]
+cache-control = "no-store"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "text/plain; charset=utf-8"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

@@ -1,0 +1,18 @@
+[request]
+method = "PUT"
+path = "/api/e%CC%81"
+body = '{"dir":"{link}","content":"# Fixture\nGREETING=\"hello world\"\n* * * * * printf \"%s\\n\" \"$GREETING\"\n@daily echo daily\n","revision":"81d7365c62babc6460f45be48d7657232b9d435db3817302cd2dbcd7aaa3f584","status":"allowed"}'
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-020-symlink-write"
+
+[response]
+status = 404
+
+[response.headers]
+cache-control = "no-store"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "text/plain; charset=utf-8"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

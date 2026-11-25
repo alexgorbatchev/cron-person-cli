@@ -1,0 +1,8 @@
+[OK] cron-person system status: active
+  Version:              0.0.1
+  Tracked Directories:  0
+  Allowed Directories:  0
+  Active Tasks:         0
+  Configuration:        [CWD]/fixture/config/cron-person/config.json (defaults)
+
+No tracked directories. Use 'cron-person allow <path>' to authorize a directory.

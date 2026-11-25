@@ -1,0 +1,17 @@
+[request]
+method = "GET"
+path = "/THIRD_PARTY_NOTICES.txt"
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-003-static-notices"
+
+[response]
+status = 200
+
+[response.headers]
+accept-ranges = "bytes"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "text/plain; charset=utf-8"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

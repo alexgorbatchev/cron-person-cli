@@ -1,0 +1,36 @@
+Generate the autocompletion script for
+the fish shell.
+
+To load completions in your current
+shell session:
+
+        cron-person completion fish |
+        source
+
+To load completions for every new
+session, execute once:
+
+        cron-person completion fish >
+        ~/.config/fish/completions/cron-person.fish
+
+You will need to start a new shell for
+this setup to take effect.
+
+Usage:
+  cron-person completion fish [flags]
+
+Flags:
+  -h, --help
+        help for fish
+      --no-descriptions
+        disable completion descriptions
+
+Global Flags:
+      --config string
+        Path to custom configuration
+        file (default:
+        $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string
+        Path to custom authorization
+        state file (default:
+        $XDG_STATE_HOME/cron-person/allowed.json)

@@ -1,0 +1,8 @@
+bin.name = "cron-person"
+args = ["exec", ".", '''printf '\377\000\376'; printf '\375' >&2''']
+env.add.AGENT = "0"
+env.add.COLUMNS = "80"
+env.add.CRON_FIXTURE = "allowed"
+status.code = 0
+fs.sandbox = true
+binary = true

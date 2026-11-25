@@ -1,0 +1,12 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person allow
+summary: Authorize .cronrc in directory
+description: Computes SHA-256 hash and records directory as authorized to execute.
+usage: cron-person allow [path] [flags]
+args:
+  - [path]: Target directory containing .cronrc (defaults to current directory or nearest ancestor)
+mutates_db: true
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for allow
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

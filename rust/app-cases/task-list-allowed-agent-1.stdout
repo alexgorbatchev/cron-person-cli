@@ -1,0 +1,2 @@
+dir: ~/project	file: ~/project/.cronrc	line: 3	schedule: * * * * *	description: Every minute	cmd: printf "%s\n" "$GREETING"
+dir: ~/project	file: ~/project/.cronrc	line: 4	schedule: @daily	description: At 00:00	cmd: echo daily

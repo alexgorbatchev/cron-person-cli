@@ -1,0 +1,15 @@
+Manually execute a task inside a target directory with its .cronrc environment
+
+Usage:
+  cron-person task run <dir> <command...> [flags]
+
+Arguments:
+  <dir>               Directory path containing .cronrc
+  <command...>        Shell command string to execute
+
+Flags:
+  -h, --help   help for run
+
+Global Flags:
+      --config string   Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

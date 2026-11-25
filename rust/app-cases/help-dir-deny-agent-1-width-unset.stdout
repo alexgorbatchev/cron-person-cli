@@ -1,0 +1,12 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person dir deny
+summary: Revoke authorization for the specified directory
+description: Revokes authorization for the specified directory, blocking cron runs.
+usage: cron-person dir deny [path] [flags]
+args:
+  - [path]: Directory containing .cronrc (defaults to current directory or nearest ancestor)
+mutates_db: true
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for deny
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

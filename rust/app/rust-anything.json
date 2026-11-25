@@ -1,0 +1,19 @@
+{
+  "schema": "rust-anything/front-door@1",
+  "name": "cron-person",
+  "commands": [
+    "allow",
+    "completion",
+    "crontab",
+    "dashboard",
+    "deny",
+    "dir",
+    "exec",
+    "help",
+    "hook",
+    "skill",
+    "status",
+    "task"
+  ],
+  "units": []
+}

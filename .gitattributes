@@ -1,1 +1,4 @@
 cmd/cron-person/dashboard-assets/* linguist-generated=true -whitespace
+# Recorded behavior is compared byte for byte, including CRLF and whitespace.
+rust/app-cases/** -text -whitespace linguist-generated=true
+rust/http-baseline/rust/app-cases/** -text -whitespace linguist-generated=true

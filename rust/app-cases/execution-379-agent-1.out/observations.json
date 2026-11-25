@@ -1,0 +1,90 @@
+[
+  {
+    "path": "bin/crontab",
+    "mode": 448,
+    "type": "file",
+    "text": "#!/bin/sh\nif [ \"$1\" = \"-l\" ]; then cat \"$FIXTURE_CRONTAB\"; else cat \"$1\" > \"$FIXTURE_CRONTAB\"; fi\n"
+  },
+  {
+    "path": "bin",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "crontab",
+    "mode": 384,
+    "type": "file",
+    "text": "# unrelated user entry\n0 0 * * * echo existing\n"
+  },
+  {
+    "path": "home/project/.cronrc",
+    "mode": 384,
+    "type": "file",
+    "text": "# Fixture\nGREETING=\"hello world\"\n* * * * * printf \"%s\\n\" \"$GREETING\"\n@daily echo daily\n"
+  },
+  {
+    "path": "home/project",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "home",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "state/cron-person/allowed.json",
+    "mode": 384,
+    "type": "file",
+    "text": "[\n  {\n    \"dir\": \"[CWD]/fixture/home/project\",\n    \"path\": \"[CWD]/fixture/home/project/.cronrc\",\n    \"hash\": \"81d7365c62babc6460f45be48d7657232b9d435db3817302cd2dbcd7aaa3f584\",\n    \"allowed_at\": \"[..]\"\n  }\n]\n"
+  },
+  {
+    "path": "state/cron-person/runs/<task:printf hello>/<run-id>/meta.json",
+    "mode": 384,
+    "type": "file",
+    "text": "{\n  \"id\": \"<run-id>\",\n  \"task_id\": \"<task:printf hello>\",\n  \"dir\": \"[CWD]/fixture/home/project\",\n  \"command\": \"printf hello\",\n  \"trigger\": \"manual\",\n  \"status\": \"succeeded\",\n  \"started_at\": \"[..]\",\n  \"finished_at\": \"[..]\",\n  \"exit_code\": 0\n}"
+  },
+  {
+    "path": "state/cron-person/runs/<task:printf hello>/<run-id>/output.log",
+    "mode": 384,
+    "type": "file",
+    "text": "[out] hello\n"
+  },
+  {
+    "path": "state/cron-person/runs/<task:printf hello>/<run-id>/run.lock",
+    "mode": 384,
+    "type": "file",
+    "text": ""
+  },
+  {
+    "path": "state/cron-person/runs/<task:printf hello>/<run-id>",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "state/cron-person/runs/<task:printf hello>/task.json",
+    "mode": 384,
+    "type": "file",
+    "text": "{\n  \"dir\": \"[CWD]/fixture/home/project\",\n  \"command\": \"printf hello\"\n}"
+  },
+  {
+    "path": "state/cron-person/runs/<task:printf hello>",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "state/cron-person/runs",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "state/cron-person",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "state",
+    "mode": 448,
+    "type": "dir"
+  }
+]

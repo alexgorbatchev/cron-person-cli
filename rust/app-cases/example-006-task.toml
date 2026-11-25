@@ -1,0 +1,4 @@
+bin.name = "cron-person"
+args = ["task", "run", "~/projects/app", "./scripts/backup.sh"]
+status.code = 1
+fs.sandbox = true

@@ -1,0 +1,13 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person task history
+summary: List recent task runs, newest first
+description: Lists recorded runs from cron and manual triggers, including refused runs, from <store dir>/runs. Filter by directory or task ID; --limit 0 lists all.
+usage: cron-person task history [dir] [flags]
+args:
+  - [dir]: Show only runs of tasks in this directory (defaults to all directories)
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for history
+  --limit int: Maximum number of runs to show (0 shows all) (default: "20")
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)
+  --task string: Show only runs of this task ID

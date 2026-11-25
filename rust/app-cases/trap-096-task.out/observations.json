@@ -1,0 +1,84 @@
+[
+  {
+    "path": "bin/crontab",
+    "mode": 448,
+    "type": "file",
+    "text": "#!/bin/sh\nif [ \"$1\" = \"-l\" ]; then cat \"$FIXTURE_CRONTAB\"; else cat \"$1\" > \"$FIXTURE_CRONTAB\"; fi\n"
+  },
+  {
+    "path": "bin",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "crontab",
+    "mode": 384,
+    "type": "file",
+    "text": "# unrelated user entry\n0 0 * * * echo existing\n"
+  },
+  {
+    "path": "home/project/.cronrc",
+    "mode": 384,
+    "type": "file",
+    "text": "# Fixture\nGREETING=\"hello world\"\n* * * * * printf \"%s\\n\" \"$GREETING\"\n@daily echo daily\n"
+  },
+  {
+    "path": "home/project",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "home",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "state/cron-person/runs/<task:ılık ırmak>/<run-id>/meta.json",
+    "mode": 384,
+    "type": "file",
+    "text": "{\n  \"id\": \"<run-id>\",\n  \"task_id\": \"<task:ılık ırmak>\",\n  \"dir\": \"[CWD]/fixture/home/project/~/projects/app\",\n  \"command\": \"ılık ırmak\",\n  \"trigger\": \"manual\",\n  \"status\": \"blocked\",\n  \"started_at\": \"[..]\",\n  \"finished_at\": \"[..]\",\n  \"error\": \"no .cronrc file found in [CWD]/fixture/home/project/~/projects/app\"\n}"
+  },
+  {
+    "path": "state/cron-person/runs/<task:ılık ırmak>/<run-id>/output.log",
+    "mode": 384,
+    "type": "file",
+    "text": ""
+  },
+  {
+    "path": "state/cron-person/runs/<task:ılık ırmak>/<run-id>/run.lock",
+    "mode": 384,
+    "type": "file",
+    "text": ""
+  },
+  {
+    "path": "state/cron-person/runs/<task:ılık ırmak>/<run-id>",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "state/cron-person/runs/<task:ılık ırmak>/task.json",
+    "mode": 384,
+    "type": "file",
+    "text": "{\n  \"dir\": \"[CWD]/fixture/home/project/~/projects/app\",\n  \"command\": \"ılık ırmak\"\n}"
+  },
+  {
+    "path": "state/cron-person/runs/<task:ılık ırmak>",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "state/cron-person/runs",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "state/cron-person",
+    "mode": 448,
+    "type": "dir"
+  },
+  {
+    "path": "state",
+    "mode": 448,
+    "type": "dir"
+  }
+]

@@ -1,0 +1,19 @@
+Inspect and trigger scheduled tasks
+
+Usage:
+  cron-person task [flags] [command]
+
+Available Commands:
+├─ history [dir]           List recent task runs, newest first
+├─ list                    List all tasks defined across all authorized directories
+├─ log <run-id>            Show the details and captured output of a task run
+╰─ run <dir> <command...>  Manually execute a task inside a target directory with its .cronrc environment
+
+Flags:
+  -h, --help   help for task
+
+Global Flags:
+      --config string   Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)
+
+Use "cron-person task [command] --help" for more information about a command.

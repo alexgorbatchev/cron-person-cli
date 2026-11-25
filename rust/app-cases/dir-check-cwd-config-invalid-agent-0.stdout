@@ -1,0 +1,5 @@
+[OK] Syntax valid for ~/project/.cronrc
+     Found 2 scheduled task(s)
+     Environment variables: 1 defined
+     Task #1 (line 3): * * * * * => printf "%s\n" "$GREETING"
+     Task #2 (line 4): @daily => echo daily

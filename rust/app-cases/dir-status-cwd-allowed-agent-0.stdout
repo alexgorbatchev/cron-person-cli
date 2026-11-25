@@ -1,0 +1,8 @@
+Directory: ~/project
+Status:    allowed
+Hash:      81d7365c62babc6460f45be48d7657232b9d435db3817302cd2dbcd7aaa3f584
+Allowed:   [..] UTC
+
+Tasks (2):
+  1. [* * * * *] printf "%s\n" "$GREETING"
+  2. [@daily] echo daily

@@ -1,0 +1,18 @@
+[request]
+method = "DELETE"
+path = "/api/document"
+body = '{"n":9007199254740993,"f":1e21,"t":0.1,"neg":-7}'
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-021-symlink-delete"
+
+[response]
+status = 400
+
+[response.headers]
+cache-control = "no-store"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "text/plain; charset=utf-8"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

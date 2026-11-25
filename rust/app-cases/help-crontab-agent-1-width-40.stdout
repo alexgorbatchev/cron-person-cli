@@ -1,0 +1,13 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person crontab
+summary: Synchronize and inspect system crontab integration
+description: Commands to generate, inspect, install, and remove managed user crontab blocks.
+usage: cron-person crontab [flags] [command]
+subcommands:
+  - show: Preview generated crontab block without modifying crontab
+  - sync: Compile authorized directory jobs and install into user crontab
+  - uninstall: Remove cron-person managed block from system crontab
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for crontab
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

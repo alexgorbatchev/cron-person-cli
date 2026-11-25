@@ -1,0 +1,13 @@
+List all tasks defined across all authorized directories
+
+Usage:
+  cron-person task list [flags]
+
+Flags:
+  -h, --help   help for list
+
+Global Flags:
+      --config string   Path to custom configuration file (default:
+                        $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default:
+                        $XDG_STATE_HOME/cron-person/allowed.json)

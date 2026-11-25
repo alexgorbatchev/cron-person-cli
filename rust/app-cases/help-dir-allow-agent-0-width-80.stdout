@@ -1,0 +1,17 @@
+Authorize .cronrc in the specified directory
+
+Usage:
+  cron-person dir allow [path] [flags]
+
+Arguments:
+  [path]              Directory containing .cronrc (defaults to current
+                      directory or nearest ancestor)
+
+Flags:
+  -h, --help   help for allow
+
+Global Flags:
+      --config string   Path to custom configuration file (default:
+                        $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default:
+                        $XDG_STATE_HOME/cron-person/allowed.json)

@@ -1,0 +1,5 @@
+bin.name = "cron-person"
+args = ["task", "a b", "~/projects/app", "--limit", "5"]
+env.add.AGENT = "1"
+status.code = 1
+fs.sandbox = true

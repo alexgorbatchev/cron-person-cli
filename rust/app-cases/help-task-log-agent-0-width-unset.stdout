@@ -1,0 +1,16 @@
+Show the details and captured output of a task run
+
+Usage:
+  cron-person task log <run-id> [flags]
+
+Arguments:
+  <run-id>            Run ID shown by task history
+
+Flags:
+  -f, --follow     Keep printing output as it is captured until the run finishes
+  -h, --help       help for log
+      --tail int   Show only the last N output lines (0 shows all)
+
+Global Flags:
+      --config string   Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

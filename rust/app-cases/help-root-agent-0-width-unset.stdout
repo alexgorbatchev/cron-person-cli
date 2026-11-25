@@ -1,0 +1,40 @@
+cron-person is a higher-order crontab manager that executes cron tasks in their respective directory contexts with direnv-style allow/deny authorization.
+
+Usage:
+  cron-person [flags] [command]
+
+Available Commands:
+├─ allow [path]                  Authorize .cronrc in the specified directory
+├─ crontab                       Synchronize and inspect system crontab integration
+│  ├─ show                       Preview generated crontab block without modifying crontab
+│  ├─ sync                       Compile authorized directory jobs and install into user crontab
+│  ╰─ uninstall                  Remove cron-person managed block from system crontab
+├─ dashboard                     Serve the bundled local CRUD dashboard
+├─ deny [path]                   Revoke authorization for the specified directory
+├─ dir                           Inspect and manage directory authorizations and .cronrc configurations
+│  ├─ allow [path]               Authorize .cronrc in the specified directory
+│  ├─ check [path]               Validate syntax and parseability of a .cronrc file
+│  ├─ deny [path]                Revoke authorization for the specified directory
+│  ╰─ status [path]              Show status and tasks for a specific directory
+├─ exec <dir> [--] <command...>  Execute a command in an authorized directory with cwd and .cronrc environment
+├─ hook <bash|zsh|fish>          Generate shell integration hook script
+├─ status                        Display overall system status and every tracked directory
+╰─ task                          Inspect and trigger scheduled tasks
+   ├─ history [dir]              List recent task runs, newest first
+   ├─ list                       List all tasks defined across all authorized directories
+   ├─ log <run-id>               Show the details and captured output of a task run
+   ╰─ run <dir> <command...>     Manually execute a task inside a target directory with its .cronrc environment
+
+Environment Variables:
+  AGENT                          Set to 1, true, or yes for compact agent-mode output
+  XDG_STATE_HOME                 Base directory for the default store and run history
+  XDG_CONFIG_HOME                Base directory for the default configuration file
+  SHELL                          Shell that runs tasks when .cronrc does not set SHELL
+
+Flags:
+      --config string   Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help            help for cron-person
+      --store string    Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)
+  -v, --version         version for cron-person
+
+Use "cron-person [command] --help" for more information about a command.

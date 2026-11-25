@@ -1,0 +1,9 @@
+Total scheduled tasks: 2
+
+Directory: ~/project
+  Every minute [* * * * *]
+    Source: ~/project/.cronrc:3
+    Command: printf "%s\n" "$GREETING"
+  At 00:00 [@daily]
+    Source: ~/project/.cronrc:4
+    Command: echo daily

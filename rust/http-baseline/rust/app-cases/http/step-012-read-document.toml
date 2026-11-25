@@ -1,0 +1,17 @@
+[request]
+method = "GET"
+path = "/api/document?dir=%7Bproject%7D"
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-012-read-document"
+
+[response]
+status = 200
+
+[response.headers]
+cache-control = "no-store"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "application/json"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

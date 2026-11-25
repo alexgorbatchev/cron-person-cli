@@ -1,0 +1,4 @@
+bin.name = "cron-person"
+args = ["crontab", "sync"]
+status.code = 0
+fs.sandbox = true

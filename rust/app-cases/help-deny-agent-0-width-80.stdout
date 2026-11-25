@@ -1,0 +1,17 @@
+Revoke authorization for the specified directory
+
+Usage:
+  cron-person deny [path] [flags]
+
+Arguments:
+  [path]              Target directory containing .cronrc (defaults to current
+                      directory or nearest ancestor)
+
+Flags:
+  -h, --help   help for deny
+
+Global Flags:
+      --config string   Path to custom configuration file (default:
+                        $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string    Path to custom authorization state file (default:
+                        $XDG_STATE_HOME/cron-person/allowed.json)

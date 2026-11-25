@@ -1,0 +1,14 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person task
+summary: Inspect and trigger scheduled tasks
+description: Commands for listing, manually triggering, and reviewing the run history of individual tasks.
+usage: cron-person task [flags] [command]
+subcommands:
+  - history [dir]: List recent task runs, newest first
+  - list: List all tasks defined across all authorized directories
+  - log <run-id>: Show the details and captured output of a task run
+  - run <dir> <command...>: Manually execute a task inside a target directory
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for task
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

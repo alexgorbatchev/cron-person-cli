@@ -1,0 +1,5 @@
+function __cron_person_export_eval --on-event fish_prompt;
+  set -l previous_exit_status $status;
+  "cron-person" hook export fish;
+  return $previous_exit_status;
+end

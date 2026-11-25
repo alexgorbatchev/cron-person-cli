@@ -1,0 +1,4 @@
+bin.name = "cron-person"
+args = ["dir", "👨‍👩‍👧 family", "~/projects/app"]
+status.code = 1
+fs.sandbox = true

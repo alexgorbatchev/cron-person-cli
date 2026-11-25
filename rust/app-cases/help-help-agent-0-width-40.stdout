@@ -1,0 +1,20 @@
+Help provides help for any command in
+the application.
+Simply type cron-person help [path to
+command] for full details.
+
+Usage:
+  cron-person help [command] [flags]
+
+Flags:
+  -h, --help   help for help
+
+Global Flags:
+      --config string
+        Path to custom configuration
+        file (default:
+        $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string
+        Path to custom authorization
+        state file (default:
+        $XDG_STATE_HOME/cron-person/allowed.json)

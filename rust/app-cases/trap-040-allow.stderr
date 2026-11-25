@@ -1,0 +1,1 @@
+ERR: allowing directory ~/project/a b: validating .cronrc in ~/project/a b: reading cronrc file ~/project/a b/.cronrc: open ~/project/a b/.cronrc: no such file or directory

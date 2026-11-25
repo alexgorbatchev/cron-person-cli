@@ -1,0 +1,9 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person task list
+summary: List all tasks defined across all authorized directories
+description: Displays all active tasks grouped by directory with their cron schedules.
+usage: cron-person task list [flags]
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for list
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

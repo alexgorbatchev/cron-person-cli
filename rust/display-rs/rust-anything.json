@@ -1,0 +1,124 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "../..",
+  "unit": "rust/reference/display/",
+  "language": "go",
+  "kind": "ffi",
+  "crate_name": "display-rs",
+  "exports": [
+    {
+      "name": "FormatPath",
+      "file": "rust/reference/display/display.go",
+      "line": 16,
+      "params": [
+        {
+          "name": "value",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false,
+      "native_return": "(string)",
+      "prototype": "func FormatPath(value string) string"
+    },
+    {
+      "name": "FormatErrorText",
+      "file": "rust/reference/display/display.go",
+      "line": 19,
+      "params": [
+        {
+          "name": "value",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false,
+      "native_return": "(string)",
+      "prototype": "func FormatErrorText(value string) string"
+    },
+    {
+      "name": "PathBytes",
+      "file": "rust/reference/display/display.go",
+      "line": 22,
+      "params": [
+        {
+          "name": "value",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        },
+        {
+          "name": "home",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        },
+        {
+          "name": "present",
+          "ts_type": "boolean",
+          "optional": false,
+          "rest": false,
+          "native_type": "bool"
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false,
+      "native_return": "(string, error)",
+      "prototype": "func PathBytes(value, home string, present bool) (string, error)"
+    },
+    {
+      "name": "ErrorBytes",
+      "file": "rust/reference/display/display.go",
+      "line": 27,
+      "params": [
+        {
+          "name": "value",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        },
+        {
+          "name": "home",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        },
+        {
+          "name": "present",
+          "ts_type": "boolean",
+          "optional": false,
+          "rest": false,
+          "native_type": "bool"
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false,
+      "native_return": "(string, error)",
+      "prototype": "func ErrorBytes(value, home string, present bool) (string, error)"
+    }
+  ],
+  "classes": [],
+  "js_only": []
+}

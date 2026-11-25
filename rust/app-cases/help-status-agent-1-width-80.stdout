@@ -1,0 +1,9 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person status
+summary: Display overall system status and every tracked directory
+description: Summarizes tracked and allowed directories, scheduled tasks, and the configuration, then lists each tracked directory with its authorization status, task count, and why any directory's tasks cannot run.
+usage: cron-person status [flags]
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for status
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

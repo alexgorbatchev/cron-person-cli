@@ -1,0 +1,13 @@
+_cron_person_hook() {
+  local previous_exit_status=$?;
+  "cron-person" hook export zsh;
+  return $previous_exit_status;
+}
+typeset -ag precmd_functions;
+if (( ! ${precmd_functions[(I)_cron_person_hook]} )); then
+  precmd_functions=(_cron_person_hook $precmd_functions);
+fi
+typeset -ag chpwd_functions;
+if (( ! ${chpwd_functions[(I)_cron_person_hook]} )); then
+  chpwd_functions=(_cron_person_hook $chpwd_functions);
+fi

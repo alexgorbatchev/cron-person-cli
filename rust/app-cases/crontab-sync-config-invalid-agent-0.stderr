@@ -1,0 +1,1 @@
+[ERROR] fix the configuration before syncing: parsing config [CWD]/fixture/config/cron-person/config.json: json: unknown field "unknown"

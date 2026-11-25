@@ -1,0 +1,6 @@
+version: 0.0.1
+tracked_dirs: 0
+allowed_dirs: 0
+total_tasks: 0
+config: [CWD]/fixture/config/cron-person/config.json
+config_status: defaults

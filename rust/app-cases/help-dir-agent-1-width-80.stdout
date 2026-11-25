@@ -1,0 +1,14 @@
+ALERT: Agents must read `AGENT=1 cron-person skill` before using this tool.
+command: cron-person dir
+summary: Inspect and manage directory authorizations and .cronrc configurations
+description: Commands for managing authorized directories and inspecting their .cronrc configurations.
+usage: cron-person dir [flags] [command]
+subcommands:
+  - allow [path]: Authorize .cronrc in the specified directory
+  - check [path]: Validate syntax and parseability of a .cronrc file
+  - deny [path]: Revoke authorization for the specified directory
+  - status [path]: Show status and tasks for a specific directory
+flags:
+  --config string: Path to custom configuration file (default: $XDG_CONFIG_HOME/cron-person/config.json)
+  -h, --help bool: help for dir
+  --store string: Path to custom authorization state file (default: $XDG_STATE_HOME/cron-person/allowed.json)

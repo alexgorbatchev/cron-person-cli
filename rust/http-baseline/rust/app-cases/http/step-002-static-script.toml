@@ -1,0 +1,17 @@
+[request]
+method = "GET"
+path = "/chunk-xqnqd3y6.js"
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-002-static-script"
+
+[response]
+status = 200
+
+[response.headers]
+accept-ranges = "bytes"
+content-security-policy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'"
+content-type = "text/javascript; charset=utf-8"
+referrer-policy = "no-referrer"
+x-content-type-options = "nosniff"

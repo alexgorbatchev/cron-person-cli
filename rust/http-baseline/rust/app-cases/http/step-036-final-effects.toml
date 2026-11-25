@@ -1,0 +1,13 @@
+[request]
+method = "GET"
+path = "/__observations"
+
+[request.headers]
+X-Dashboard-Token = "fixture-valid-token"
+X-Scenario-Step = "step-036-final-effects"
+
+[response]
+status = 200
+
+[response.headers]
+content-type = "application/json"

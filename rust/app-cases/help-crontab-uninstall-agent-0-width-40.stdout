@@ -1,0 +1,18 @@
+Remove cron-person managed block from
+system crontab
+
+Usage:
+  cron-person crontab uninstall [flags]
+
+Flags:
+  -h, --help   help for uninstall
+
+Global Flags:
+      --config string
+        Path to custom configuration
+        file (default:
+        $XDG_CONFIG_HOME/cron-person/config.json)
+      --store string
+        Path to custom authorization
+        state file (default:
+        $XDG_STATE_HOME/cron-person/allowed.json)
