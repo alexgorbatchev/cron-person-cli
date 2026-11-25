@@ -1,0 +1,1396 @@
+{
+  "schema": "rust-anything/analyze@1",
+  "language": "go",
+  "summary": {
+    "packages": 1,
+    "source_files": 37,
+    "test_files": 58,
+    "ui_files": 0,
+    "loc": 4311,
+    "units": 12,
+    "ready": 6,
+    "caution": 6,
+    "blocked": 0,
+    "keep": 0,
+    "parse_errors": 0
+  },
+  "packages": [
+    {
+      "name": "github.com/alexgorbatchev/cron-person-cli",
+      "dir": "",
+      "order": 1,
+      "runtime": "portable",
+      "workspace_deps": [],
+      "test_files": 58,
+      "units": [
+        "cmd/cron-person/",
+        "internal/config/",
+        "internal/cronrc/",
+        "internal/crontab/",
+        "internal/display/",
+        "internal/filelock/",
+        "internal/history/",
+        "internal/hook/",
+        "internal/runner/",
+        "internal/store/",
+        "scripts/",
+        "scripts/verify-release/"
+      ]
+    }
+  ],
+  "units": [
+    {
+      "id": "cmd/cron-person/",
+      "package": "github.com/alexgorbatchev/cron-person-cli",
+      "files": [
+        "cmd/cron-person/attach.go",
+        "cmd/cron-person/attach_unix.go",
+        "cmd/cron-person/attach_windows.go",
+        "cmd/cron-person/crontab.go",
+        "cmd/cron-person/dashboard.go",
+        "cmd/cron-person/dir.go",
+        "cmd/cron-person/exec.go",
+        "cmd/cron-person/help.go",
+        "cmd/cron-person/history.go",
+        "cmd/cron-person/hook.go",
+        "cmd/cron-person/main.go",
+        "cmd/cron-person/root.go",
+        "cmd/cron-person/task.go"
+      ],
+      "loc": 1623,
+      "wave": 3,
+      "readiness": 0,
+      "status": "caution",
+      "bridge": "cgo",
+      "platforms": [],
+      "risks": [
+        {
+          "risk": "pointers",
+          "severity": "high",
+          "count": 154,
+          "samples": [
+            "cmd/cron-person/attach.go:31",
+            "cmd/cron-person/attach.go:88",
+            "cmd/cron-person/attach.go:104"
+          ]
+        },
+        {
+          "risk": "string-offsets",
+          "severity": "high",
+          "count": 5,
+          "samples": [
+            "cmd/cron-person/attach.go:251",
+            "cmd/cron-person/exec.go:30",
+            "cmd/cron-person/exec.go:32"
+          ]
+        },
+        {
+          "risk": "null-references",
+          "severity": "medium",
+          "count": 127,
+          "samples": [
+            "cmd/cron-person/attach.go:33",
+            "cmd/cron-person/attach.go:37",
+            "cmd/cron-person/attach.go:41"
+          ]
+        },
+        {
+          "risk": "callbacks",
+          "severity": "medium",
+          "count": 29,
+          "samples": [
+            "cmd/cron-person/attach.go:134",
+            "cmd/cron-person/attach.go:140",
+            "cmd/cron-person/attach.go:149"
+          ]
+        },
+        {
+          "risk": "concurrency",
+          "severity": "medium",
+          "count": 25,
+          "samples": [
+            "cmd/cron-person/attach.go:13",
+            "cmd/cron-person/attach.go:58",
+            "cmd/cron-person/attach.go:84"
+          ]
+        },
+        {
+          "risk": "integer-semantics",
+          "severity": "medium",
+          "count": 6,
+          "samples": [
+            "cmd/cron-person/attach.go:296",
+            "cmd/cron-person/attach_windows.go:21",
+            "cmd/cron-person/dashboard.go:137"
+          ]
+        },
+        {
+          "risk": "dynamic-typing",
+          "severity": "medium",
+          "count": 3,
+          "samples": [
+            "cmd/cron-person/attach.go:105",
+            "cmd/cron-person/attach.go:295",
+            "cmd/cron-person/main.go:57"
+          ]
+        },
+        {
+          "risk": "exceptions",
+          "severity": "low",
+          "count": 15,
+          "samples": [
+            "cmd/cron-person/attach.go:56",
+            "cmd/cron-person/attach.go:60",
+            "cmd/cron-person/attach.go:135"
+          ]
+        },
+        {
+          "risk": "json",
+          "severity": "low",
+          "count": 1,
+          "samples": [
+            "cmd/cron-person/dashboard.go:7"
+          ]
+        }
+      ],
+      "internal_deps": [
+        "internal/config/",
+        "internal/cronrc/",
+        "internal/crontab/",
+        "internal/display/",
+        "internal/history/",
+        "internal/hook/",
+        "internal/runner/",
+        "internal/store/"
+      ],
+      "workspace_deps": [],
+      "external_deps": [
+        "github.com/alexgorbatchev/cobra-help-tree/v4",
+        "github.com/spf13/cobra",
+        "golang.org/x/sys/windows",
+        "golang.org/x/term"
+      ],
+      "direct_tests": 0,
+      "fan_in": 0,
+      "density": 2.8,
+      "priority": 18,
+      "exports": 0,
+      "bridgeable": 0,
+      "notes": [
+        "3 Go modules dependencies not in the crate table: check them by hand.",
+        "Imports `internal/config/`, `internal/cronrc/`, `internal/crontab/`, `internal/display/`, `internal/history/`, `internal/hook/`, `internal/runner/`, `internal/store/`: port them first, or port them together."
+      ]
+    },
+    {
+      "id": "internal/config/",
+      "package": "github.com/alexgorbatchev/cron-person-cli",
+      "files": [
+        "internal/config/config.go"
+      ],
+      "loc": 69,
+      "wave": 2,
+      "readiness": 82,
+      "status": "ready",
+      "bridge": "cgo",
+      "platforms": [],
+      "risks": [
+        {
+          "risk": "pointers",
+          "severity": "high",
+          "count": 2,
+          "samples": [
+            "internal/config/config.go:69",
+            "internal/config/config.go:72"
+          ]
+        },
+        {
+          "risk": "null-references",
+          "severity": "medium",
+          "count": 7,
+          "samples": [
+            "internal/config/config.go:46",
+            "internal/config/config.go:49",
+            "internal/config/config.go:52"
+          ]
+        },
+        {
+          "risk": "integer-semantics",
+          "severity": "medium",
+          "count": 4,
+          "samples": [
+            "internal/config/config.go:83",
+            "internal/config/config.go:90"
+          ]
+        },
+        {
+          "risk": "json",
+          "severity": "low",
+          "count": 1,
+          "samples": [
+            "internal/config/config.go:6"
+          ]
+        }
+      ],
+      "internal_deps": [
+        "internal/history/"
+      ],
+      "workspace_deps": [],
+      "external_deps": [],
+      "direct_tests": 0,
+      "fan_in": 1,
+      "density": 0,
+      "priority": 57,
+      "exports": 3,
+      "bridgeable": 3,
+      "notes": [
+        "Imports `internal/history/`: port it first, or port them together."
+      ]
+    },
+    {
+      "id": "internal/cronrc/",
+      "package": "github.com/alexgorbatchev/cron-person-cli",
+      "files": [
+        "internal/cronrc/cronrc.go",
+        "internal/cronrc/description.go",
+        "internal/cronrc/open_unix.go",
+        "internal/cronrc/open_windows.go",
+        "internal/cronrc/read.go"
+      ],
+      "loc": 339,
+      "wave": 0,
+      "readiness": 36,
+      "status": "caution",
+      "bridge": "cgo",
+      "platforms": [],
+      "risks": [
+        {
+          "risk": "pointers",
+          "severity": "high",
+          "count": 10,
+          "samples": [
+            "internal/cronrc/cronrc.go:58",
+            "internal/cronrc/cronrc.go:65",
+            "internal/cronrc/cronrc.go:177"
+          ]
+        },
+        {
+          "risk": "string-offsets",
+          "severity": "high",
+          "count": 6,
+          "samples": [
+            "internal/cronrc/cronrc.go:54",
+            "internal/cronrc/cronrc.go:90",
+            "internal/cronrc/cronrc.go:91"
+          ]
+        },
+        {
+          "risk": "regex-syntax",
+          "severity": "high",
+          "count": 1,
+          "samples": [
+            "internal/cronrc/cronrc.go:11"
+          ]
+        },
+        {
+          "risk": "null-references",
+          "severity": "medium",
+          "count": 44,
+          "samples": [
+            "internal/cronrc/cronrc.go:60",
+            "internal/cronrc/cronrc.go:105",
+            "internal/cronrc/cronrc.go:106"
+          ]
+        },
+        {
+          "risk": "integer-semantics",
+          "severity": "medium",
+          "count": 4,
+          "samples": [
+            "internal/cronrc/cronrc.go:119",
+            "internal/cronrc/description.go:81",
+            "internal/cronrc/read.go:12"
+          ]
+        },
+        {
+          "risk": "dynamic-typing",
+          "severity": "medium",
+          "count": 1,
+          "samples": [
+            "internal/cronrc/description.go:36"
+          ]
+        },
+        {
+          "risk": "division-semantics",
+          "severity": "medium",
+          "count": 1,
+          "samples": [
+            "internal/cronrc/description.go:75"
+          ]
+        },
+        {
+          "risk": "exceptions",
+          "severity": "low",
+          "count": 1,
+          "samples": [
+            "internal/cronrc/read.go:35"
+          ]
+        }
+      ],
+      "internal_deps": [],
+      "workspace_deps": [],
+      "external_deps": [
+        "github.com/lnquy/cron",
+        "github.com/robfig/cron/v3"
+      ],
+      "direct_tests": 6,
+      "fan_in": 4,
+      "density": 5,
+      "priority": 53,
+      "exports": 6,
+      "bridgeable": 4,
+      "notes": [
+        "2 Go modules dependencies not in the crate table: check them by hand.",
+        "Leaf: imports no other unit.",
+        "6 test files import it directly."
+      ]
+    },
+    {
+      "id": "internal/crontab/",
+      "package": "github.com/alexgorbatchev/cron-person-cli",
+      "files": [
+        "internal/crontab/crontab.go"
+      ],
+      "loc": 237,
+      "wave": 2,
+      "readiness": 68,
+      "status": "ready",
+      "bridge": "cgo",
+      "platforms": [],
+      "risks": [
+        {
+          "risk": "pointers",
+          "severity": "high",
+          "count": 5,
+          "samples": [
+            "internal/crontab/crontab.go:191",
+            "internal/crontab/crontab.go:192",
+            "internal/crontab/crontab.go:211"
+          ]
+        },
+        {
+          "risk": "string-offsets",
+          "severity": "high",
+          "count": 4,
+          "samples": [
+            "internal/crontab/crontab.go:152",
+            "internal/crontab/crontab.go:155",
+            "internal/crontab/crontab.go:184"
+          ]
+        },
+        {
+          "risk": "null-references",
+          "severity": "medium",
+          "count": 42,
+          "samples": [
+            "internal/crontab/crontab.go:34",
+            "internal/crontab/crontab.go:38",
+            "internal/crontab/crontab.go:43"
+          ]
+        },
+        {
+          "risk": "callbacks",
+          "severity": "medium",
+          "count": 1,
+          "samples": [
+            "internal/crontab/crontab.go:289"
+          ]
+        },
+        {
+          "risk": "exceptions",
+          "severity": "low",
+          "count": 2,
+          "samples": [
+            "internal/crontab/crontab.go:241",
+            "internal/crontab/crontab.go:270"
+          ]
+        }
+      ],
+      "internal_deps": [
+        "internal/filelock/",
+        "internal/store/"
+      ],
+      "workspace_deps": [],
+      "external_deps": [],
+      "direct_tests": 1,
+      "fan_in": 1,
+      "density": 4.2,
+      "priority": 67,
+      "exports": 8,
+      "bridgeable": 5,
+      "notes": [
+        "Imports `internal/filelock/`, `internal/store/`: port them first, or port them together.",
+        "1 test file imports it directly."
+      ]
+    },
+    {
+      "id": "internal/display/",
+      "package": "github.com/alexgorbatchev/cron-person-cli",
+      "files": [
+        "internal/display/path.go"
+      ],
+      "loc": 51,
+      "wave": 0,
+      "readiness": 88,
+      "status": "ready",
+      "bridge": "cgo",
+      "platforms": [],
+      "risks": [
+        {
+          "risk": "string-offsets",
+          "severity": "high",
+          "count": 2,
+          "samples": [
+            "internal/display/path.go:47",
+            "internal/display/path.go:53"
+          ]
+        },
+        {
+          "risk": "null-references",
+          "severity": "medium",
+          "count": 2,
+          "samples": [
+            "internal/display/path.go:14",
+            "internal/display/path.go:33"
+          ]
+        },
+        {
+          "risk": "integer-semantics",
+          "severity": "medium",
+          "count": 1,
+          "samples": [
+            "internal/display/path.go:46"
+          ]
+        }
+      ],
+      "internal_deps": [],
+      "workspace_deps": [],
+      "external_deps": [],
+      "direct_tests": 0,
+      "fan_in": 2,
+      "density": 5.9,
+      "priority": 70,
+      "exports": 2,
+      "bridgeable": 1,
+      "notes": [
+        "Leaf: imports no other unit."
+      ]
+    },
+    {
+      "id": "internal/filelock/",
+      "package": "github.com/alexgorbatchev/cron-person-cli",
+      "files": [
+        "internal/filelock/filelock.go",
+        "internal/filelock/lock_unix.go",
+        "internal/filelock/lock_windows.go"
+      ],
+      "loc": 57,
+      "wave": 0,
+      "readiness": 73,
+      "status": "caution",
+      "bridge": "cgo",
+      "platforms": [],
+      "risks": [
+        {
+          "risk": "pointers",
+          "severity": "high",
+          "count": 9,
+          "samples": [
+            "internal/filelock/lock_unix.go:12",
+            "internal/filelock/lock_unix.go:18",
+            "internal/filelock/lock_unix.go:27"
+          ]
+        },
+        {
+          "risk": "null-references",
+          "severity": "medium",
+          "count": 5,
+          "samples": [
+            "internal/filelock/filelock.go:20",
+            "internal/filelock/filelock.go:21",
+            "internal/filelock/filelock.go:23"
+          ]
+        },
+        {
+          "risk": "integer-semantics",
+          "severity": "medium",
+          "count": 3,
+          "samples": [
+            "internal/filelock/lock_unix.go:13",
+            "internal/filelock/lock_unix.go:19",
+            "internal/filelock/lock_unix.go:28"
+          ]
+        },
+        {
+          "risk": "callbacks",
+          "severity": "medium",
+          "count": 2,
+          "samples": [
+            "internal/filelock/filelock.go:18",
+            "internal/filelock/filelock.go:26"
+          ]
+        }
+      ],
+      "internal_deps": [],
+      "workspace_deps": [],
+      "external_deps": [
+        "golang.org/x/sys/windows"
+      ],
+      "direct_tests": 1,
+      "fan_in": 3,
+      "density": 0,
+      "priority": 59,
+      "exports": 7,
+      "bridgeable": 0,
+      "notes": [
+        "Every export is JS-shaped (functions, plugin objects, iterators): porting the logic means adding a data-only function, an API change.",
+        "1 Go modules dependencies not in the crate table: check them by hand.",
+        "Leaf: imports no other unit.",
+        "1 test file imports it directly."
+      ]
+    },
+    {
+      "id": "internal/history/",
+      "package": "github.com/alexgorbatchev/cron-person-cli",
+      "files": [
+        "internal/history/history.go",
+        "internal/history/recording.go",
+        "internal/history/replace_unix.go",
+        "internal/history/replace_windows.go"
+      ],
+      "loc": 645,
+      "wave": 1,
+      "readiness": 19,
+      "status": "caution",
+      "bridge": "cgo",
+      "platforms": [],
+      "risks": [
+        {
+          "risk": "pointers",
+          "severity": "high",
+          "count": 45,
+          "samples": [
+            "internal/history/history.go:80",
+            "internal/history/history.go:121",
+            "internal/history/history.go:122"
+          ]
+        },
+        {
+          "risk": "string-offsets",
+          "severity": "high",
+          "count": 11,
+          "samples": [
+            "internal/history/history.go:106",
+            "internal/history/history.go:196",
+            "internal/history/history.go:296"
+          ]
+        },
+        {
+          "risk": "null-references",
+          "severity": "medium",
+          "count": 82,
+          "samples": [
+            "internal/history/history.go:142",
+            "internal/history/history.go:144",
+            "internal/history/history.go:145"
+          ]
+        },
+        {
+          "risk": "callbacks",
+          "severity": "medium",
+          "count": 4,
+          "samples": [
+            "internal/history/history.go:139",
+            "internal/history/history.go:172",
+            "internal/history/history.go:178"
+          ]
+        },
+        {
+          "risk": "integer-semantics",
+          "severity": "medium",
+          "count": 3,
+          "samples": [
+            "internal/history/history.go:105",
+            "internal/history/recording.go:199",
+            "internal/history/recording.go:207"
+          ]
+        },
+        {
+          "risk": "concurrency",
+          "severity": "medium",
+          "count": 2,
+          "samples": [
+            "internal/history/history.go:391",
+            "internal/history/recording.go:11"
+          ]
+        },
+        {
+          "risk": "exceptions",
+          "severity": "low",
+          "count": 6,
+          "samples": [
+            "internal/history/history.go:360",
+            "internal/history/history.go:374",
+            "internal/history/history.go:462"
+          ]
+        },
+        {
+          "risk": "json",
+          "severity": "low",
+          "count": 1,
+          "samples": [
+            "internal/history/history.go:16"
+          ]
+        }
+      ],
+      "internal_deps": [
+        "internal/filelock/"
+      ],
+      "workspace_deps": [],
+      "external_deps": [
+        "golang.org/x/sys/windows"
+      ],
+      "direct_tests": 8,
+      "fan_in": 3,
+      "density": 5.7,
+      "priority": 41,
+      "exports": 3,
+      "bridgeable": 2,
+      "notes": [
+        "1 Go modules dependencies not in the crate table: check them by hand.",
+        "Imports `internal/filelock/`: port it first, or port them together.",
+        "8 test files import it directly."
+      ]
+    },
+    {
+      "id": "internal/hook/",
+      "package": "github.com/alexgorbatchev/cron-person-cli",
+      "files": [
+        "internal/hook/hook.go"
+      ],
+      "loc": 83,
+      "wave": 2,
+      "readiness": 90,
+      "status": "ready",
+      "bridge": "cgo",
+      "platforms": [],
+      "risks": [
+        {
+          "risk": "pointers",
+          "severity": "high",
+          "count": 1,
+          "samples": [
+            "internal/hook/hook.go:62"
+          ]
+        },
+        {
+          "risk": "null-references",
+          "severity": "medium",
+          "count": 7,
+          "samples": [
+            "internal/hook/hook.go:29",
+            "internal/hook/hook.go:45",
+            "internal/hook/hook.go:53"
+          ]
+        }
+      ],
+      "internal_deps": [
+        "internal/cronrc/",
+        "internal/display/",
+        "internal/store/"
+      ],
+      "workspace_deps": [],
+      "external_deps": [],
+      "direct_tests": 0,
+      "fan_in": 1,
+      "density": 0,
+      "priority": 63,
+      "exports": 2,
+      "bridgeable": 1,
+      "notes": [
+        "Imports `internal/cronrc/`, `internal/display/`, `internal/store/`: port them first, or port them together."
+      ]
+    },
+    {
+      "id": "internal/runner/",
+      "package": "github.com/alexgorbatchev/cron-person-cli",
+      "files": [
+        "internal/runner/process_unix.go",
+        "internal/runner/process_windows.go",
+        "internal/runner/runner.go"
+      ],
+      "loc": 272,
+      "wave": 2,
+      "readiness": 54,
+      "status": "caution",
+      "bridge": "cgo",
+      "platforms": [],
+      "risks": [
+        {
+          "risk": "pointers",
+          "severity": "high",
+          "count": 32,
+          "samples": [
+            "internal/runner/process_unix.go:18",
+            "internal/runner/process_unix.go:19",
+            "internal/runner/process_unix.go:22"
+          ]
+        },
+        {
+          "risk": "null-references",
+          "severity": "medium",
+          "count": 46,
+          "samples": [
+            "internal/runner/process_unix.go:23",
+            "internal/runner/process_unix.go:30",
+            "internal/runner/process_windows.go:27"
+          ]
+        },
+        {
+          "risk": "callbacks",
+          "severity": "medium",
+          "count": 4,
+          "samples": [
+            "internal/runner/runner.go:40",
+            "internal/runner/runner.go:135",
+            "internal/runner/runner.go:140"
+          ]
+        },
+        {
+          "risk": "concurrency",
+          "severity": "medium",
+          "count": 2,
+          "samples": [
+            "internal/runner/runner.go:13",
+            "internal/runner/runner.go:14"
+          ]
+        },
+        {
+          "risk": "integer-semantics",
+          "severity": "medium",
+          "count": 1,
+          "samples": [
+            "internal/runner/process_windows.go:31"
+          ]
+        },
+        {
+          "risk": "exceptions",
+          "severity": "low",
+          "count": 2,
+          "samples": [
+            "internal/runner/process_windows.go:36",
+            "internal/runner/runner.go:179"
+          ]
+        }
+      ],
+      "internal_deps": [
+        "internal/cronrc/",
+        "internal/history/",
+        "internal/store/"
+      ],
+      "workspace_deps": [],
+      "external_deps": [
+        "golang.org/x/sys/windows"
+      ],
+      "direct_tests": 1,
+      "fan_in": 1,
+      "density": 2.9,
+      "priority": 58,
+      "exports": 1,
+      "bridgeable": 0,
+      "notes": [
+        "Every export is JS-shaped (functions, plugin objects, iterators): porting the logic means adding a data-only function, an API change.",
+        "1 Go modules dependencies not in the crate table: check them by hand.",
+        "Imports `internal/cronrc/`, `internal/history/`, `internal/store/`: port them first, or port them together.",
+        "1 test file imports it directly."
+      ]
+    },
+    {
+      "id": "internal/store/",
+      "package": "github.com/alexgorbatchev/cron-person-cli",
+      "files": [
+        "internal/store/store.go",
+        "internal/store/sync_unix.go",
+        "internal/store/sync_windows.go"
+      ],
+      "loc": 434,
+      "wave": 1,
+      "readiness": 49,
+      "status": "caution",
+      "bridge": "cgo",
+      "platforms": [],
+      "risks": [
+        {
+          "risk": "pointers",
+          "severity": "high",
+          "count": 29,
+          "samples": [
+            "internal/store/store.go:52",
+            "internal/store/store.go:67",
+            "internal/store/store.go:73"
+          ]
+        },
+        {
+          "risk": "null-references",
+          "severity": "medium",
+          "count": 93,
+          "samples": [
+            "internal/store/store.go:57",
+            "internal/store/store.go:60",
+            "internal/store/store.go:63"
+          ]
+        },
+        {
+          "risk": "callbacks",
+          "severity": "medium",
+          "count": 5,
+          "samples": [
+            "internal/store/store.go:102",
+            "internal/store/store.go:148",
+            "internal/store/store.go:271"
+          ]
+        },
+        {
+          "risk": "concurrency",
+          "severity": "medium",
+          "count": 1,
+          "samples": [
+            "internal/store/store.go:13"
+          ]
+        },
+        {
+          "risk": "exceptions",
+          "severity": "low",
+          "count": 5,
+          "samples": [
+            "internal/store/store.go:111",
+            "internal/store/store.go:248",
+            "internal/store/store.go:288"
+          ]
+        },
+        {
+          "risk": "json",
+          "severity": "low",
+          "count": 1,
+          "samples": [
+            "internal/store/store.go:5"
+          ]
+        }
+      ],
+      "internal_deps": [
+        "internal/cronrc/",
+        "internal/filelock/"
+      ],
+      "workspace_deps": [],
+      "external_deps": [],
+      "direct_tests": 11,
+      "fan_in": 4,
+      "density": 4.8,
+      "priority": 59,
+      "exports": 2,
+      "bridgeable": 1,
+      "notes": [
+        "Imports `internal/cronrc/`, `internal/filelock/`: port them first, or port them together.",
+        "11 test files import it directly."
+      ]
+    },
+    {
+      "id": "scripts/",
+      "package": "github.com/alexgorbatchev/cron-person-cli",
+      "files": [
+        "scripts/dev-bootstrap.go"
+      ],
+      "loc": 73,
+      "wave": 0,
+      "readiness": 88,
+      "status": "ready",
+      "bridge": "cgo",
+      "platforms": [],
+      "risks": [
+        {
+          "risk": "pointers",
+          "severity": "high",
+          "count": 1,
+          "samples": [
+            "scripts/dev-bootstrap.go:16"
+          ]
+        },
+        {
+          "risk": "null-references",
+          "severity": "medium",
+          "count": 12,
+          "samples": [
+            "scripts/dev-bootstrap.go:15",
+            "scripts/dev-bootstrap.go:21",
+            "scripts/dev-bootstrap.go:26"
+          ]
+        },
+        {
+          "risk": "dynamic-typing",
+          "severity": "medium",
+          "count": 1,
+          "samples": [
+            "scripts/dev-bootstrap.go:16"
+          ]
+        }
+      ],
+      "internal_deps": [],
+      "workspace_deps": [],
+      "external_deps": [],
+      "direct_tests": 0,
+      "fan_in": 0,
+      "density": 0,
+      "priority": 61,
+      "exports": 0,
+      "bridgeable": 0,
+      "notes": [
+        "Leaf: imports no other unit."
+      ]
+    },
+    {
+      "id": "scripts/verify-release/",
+      "package": "github.com/alexgorbatchev/cron-person-cli",
+      "files": [
+        "scripts/verify-release/main.go"
+      ],
+      "loc": 428,
+      "wave": 0,
+      "readiness": 53,
+      "status": "ready",
+      "bridge": "cgo",
+      "platforms": [],
+      "risks": [
+        {
+          "risk": "pointers",
+          "severity": "high",
+          "count": 15,
+          "samples": [
+            "scripts/verify-release/main.go:46",
+            "scripts/verify-release/main.go:48",
+            "scripts/verify-release/main.go:62"
+          ]
+        },
+        {
+          "risk": "string-offsets",
+          "severity": "high",
+          "count": 1,
+          "samples": [
+            "scripts/verify-release/main.go:38"
+          ]
+        },
+        {
+          "risk": "null-references",
+          "severity": "medium",
+          "count": 48,
+          "samples": [
+            "scripts/verify-release/main.go:53",
+            "scripts/verify-release/main.go:91",
+            "scripts/verify-release/main.go:96"
+          ]
+        },
+        {
+          "risk": "callbacks",
+          "severity": "medium",
+          "count": 2,
+          "samples": [
+            "scripts/verify-release/main.go:95",
+            "scripts/verify-release/main.go:152"
+          ]
+        },
+        {
+          "risk": "division-semantics",
+          "severity": "medium",
+          "count": 1,
+          "samples": [
+            "scripts/verify-release/main.go:231"
+          ]
+        },
+        {
+          "risk": "exceptions",
+          "severity": "low",
+          "count": 8,
+          "samples": [
+            "scripts/verify-release/main.go:112",
+            "scripts/verify-release/main.go:298",
+            "scripts/verify-release/main.go:316"
+          ]
+        },
+        {
+          "risk": "json",
+          "severity": "low",
+          "count": 1,
+          "samples": [
+            "scripts/verify-release/main.go:15"
+          ]
+        }
+      ],
+      "internal_deps": [],
+      "workspace_deps": [],
+      "external_deps": [
+        "gopkg.in/yaml.v3"
+      ],
+      "direct_tests": 0,
+      "fan_in": 0,
+      "density": 5.8,
+      "priority": 55,
+      "exports": 0,
+      "bridgeable": 0,
+      "notes": [
+        "Leaf: imports no other unit."
+      ]
+    }
+  ],
+  "start_here": [
+    "internal/display/",
+    "internal/crontab/",
+    "internal/hook/",
+    "internal/config/"
+  ],
+  "dependencies": [
+    {
+      "name": "golang.org/x/sys/windows",
+      "used_by": 4,
+      "crates": null,
+      "fit": "unknown",
+      "note": ""
+    },
+    {
+      "name": "github.com/alexgorbatchev/cobra-help-tree/v4",
+      "used_by": 1,
+      "crates": null,
+      "fit": "unknown",
+      "note": ""
+    },
+    {
+      "name": "github.com/lnquy/cron",
+      "used_by": 1,
+      "crates": null,
+      "fit": "unknown",
+      "note": ""
+    },
+    {
+      "name": "github.com/robfig/cron/v3",
+      "used_by": 1,
+      "crates": null,
+      "fit": "unknown",
+      "note": ""
+    },
+    {
+      "name": "golang.org/x/term",
+      "used_by": 1,
+      "crates": null,
+      "fit": "unknown",
+      "note": ""
+    },
+    {
+      "name": "github.com/spf13/cobra",
+      "used_by": 1,
+      "crates": "clap",
+      "fit": "good",
+      "note": ""
+    },
+    {
+      "name": "gopkg.in/yaml.v3",
+      "used_by": 1,
+      "crates": "serde_yaml_ng",
+      "fit": "good",
+      "note": ""
+    }
+  ],
+  "whole_app": {
+    "shape": "cli",
+    "entry_points": [
+      {
+        "kind": "cli",
+        "path": "cmd/cron-person",
+        "name": "cron-person",
+        "evidence": "a `cmd/` folder"
+      },
+      {
+        "kind": "cli",
+        "path": "scripts/dev-bootstrap.go",
+        "evidence": "`func main()` at scripts/dev-bootstrap.go:73"
+      },
+      {
+        "kind": "cli",
+        "path": "scripts/verify-release/main.go",
+        "evidence": "`func main()` at scripts/verify-release/main.go:37"
+      }
+    ],
+    "dependencies": [
+      {
+        "name": "golang.org/x/sys/windows",
+        "names": [
+          "golang.org/x/sys/windows"
+        ],
+        "declared": false,
+        "used_by": 4,
+        "crates": null,
+        "fit": "unknown",
+        "note": ""
+      },
+      {
+        "name": "github.com/alexgorbatchev/cobra-help-tree/v4",
+        "names": [
+          "github.com/alexgorbatchev/cobra-help-tree/v4"
+        ],
+        "declared": true,
+        "used_by": 1,
+        "crates": null,
+        "fit": "unknown",
+        "note": ""
+      },
+      {
+        "name": "github.com/lnquy/cron",
+        "names": [
+          "github.com/lnquy/cron"
+        ],
+        "declared": true,
+        "used_by": 1,
+        "crates": null,
+        "fit": "unknown",
+        "note": ""
+      },
+      {
+        "name": "github.com/robfig/cron/v3",
+        "names": [
+          "github.com/robfig/cron/v3"
+        ],
+        "declared": true,
+        "used_by": 1,
+        "crates": null,
+        "fit": "unknown",
+        "note": ""
+      },
+      {
+        "name": "golang.org/x/term",
+        "names": [
+          "golang.org/x/term"
+        ],
+        "declared": true,
+        "used_by": 1,
+        "crates": null,
+        "fit": "unknown",
+        "note": ""
+      },
+      {
+        "name": "github.com/mattn/go-runewidth",
+        "names": [
+          "github.com/mattn/go-runewidth"
+        ],
+        "declared": true,
+        "used_by": 0,
+        "crates": null,
+        "fit": "unknown",
+        "note": ""
+      },
+      {
+        "name": "github.com/testcontainers/testcontainers-go",
+        "names": [
+          "github.com/testcontainers/testcontainers-go"
+        ],
+        "declared": true,
+        "used_by": 0,
+        "crates": null,
+        "fit": "unknown",
+        "note": ""
+      },
+      {
+        "name": "golang.org/x/sys",
+        "names": [
+          "golang.org/x/sys"
+        ],
+        "declared": true,
+        "used_by": 0,
+        "crates": null,
+        "fit": "unknown",
+        "note": ""
+      },
+      {
+        "name": "github.com/spf13/cobra",
+        "names": [
+          "github.com/spf13/cobra"
+        ],
+        "declared": true,
+        "used_by": 1,
+        "crates": "clap",
+        "fit": "good",
+        "note": ""
+      },
+      {
+        "name": "gopkg.in/yaml.v3",
+        "names": [
+          "gopkg.in/yaml.v3"
+        ],
+        "declared": true,
+        "used_by": 1,
+        "crates": "serde_yaml_ng",
+        "fit": "good",
+        "note": ""
+      }
+    ],
+    "pieces": [
+      {
+        "wave": 0,
+        "units": [
+          "internal/cronrc/"
+        ],
+        "loc": 339,
+        "tangled": false
+      },
+      {
+        "wave": 0,
+        "units": [
+          "internal/display/"
+        ],
+        "loc": 51,
+        "tangled": false
+      },
+      {
+        "wave": 0,
+        "units": [
+          "internal/filelock/"
+        ],
+        "loc": 57,
+        "tangled": false
+      },
+      {
+        "wave": 0,
+        "units": [
+          "scripts/"
+        ],
+        "loc": 73,
+        "tangled": false
+      },
+      {
+        "wave": 0,
+        "units": [
+          "scripts/verify-release/"
+        ],
+        "loc": 428,
+        "tangled": false
+      },
+      {
+        "wave": 1,
+        "units": [
+          "internal/history/"
+        ],
+        "loc": 645,
+        "tangled": false
+      },
+      {
+        "wave": 1,
+        "units": [
+          "internal/store/"
+        ],
+        "loc": 434,
+        "tangled": false
+      },
+      {
+        "wave": 2,
+        "units": [
+          "internal/config/"
+        ],
+        "loc": 69,
+        "tangled": false
+      },
+      {
+        "wave": 2,
+        "units": [
+          "internal/crontab/"
+        ],
+        "loc": 237,
+        "tangled": false
+      },
+      {
+        "wave": 2,
+        "units": [
+          "internal/hook/"
+        ],
+        "loc": 83,
+        "tangled": false
+      },
+      {
+        "wave": 2,
+        "units": [
+          "internal/runner/"
+        ],
+        "loc": 272,
+        "tangled": false
+      },
+      {
+        "wave": 3,
+        "units": [
+          "cmd/cron-person/"
+        ],
+        "loc": 1623,
+        "tangled": false
+      }
+    ],
+    "decisions": [
+      {
+        "id": "D1",
+        "topic": "shape",
+        "question": "The app is a cli, entered through cron-person (cmd/cron-person), scripts/dev-bootstrap.go, scripts/verify-release/main.go. Port every entry point, in that shape?",
+        "recommendation": "Yes: a clap front door (`app front-door`) takes every command over first"
+      },
+      {
+        "id": "D2",
+        "topic": "dependency golang.org/x/sys/windows",
+        "question": "Which crate replaces golang.org/x/sys/windows (used by 4 units)?",
+        "recommendation": "Research it against primary sources into rust/research/golang.org-x-sys-windows.md before porting what uses it"
+      },
+      {
+        "id": "D3",
+        "topic": "dependency github.com/alexgorbatchev/cobra-help-tree/v4",
+        "question": "Which crate replaces github.com/alexgorbatchev/cobra-help-tree/v4 (used by 1 unit)?",
+        "recommendation": "Research it against primary sources into rust/research/github.com-alexgorbatchev-cobra-help-tree-v4.md before porting what uses it"
+      },
+      {
+        "id": "D4",
+        "topic": "dependency github.com/lnquy/cron",
+        "question": "Which crate replaces github.com/lnquy/cron (used by 1 unit)?",
+        "recommendation": "Research it against primary sources into rust/research/github.com-lnquy-cron.md before porting what uses it"
+      },
+      {
+        "id": "D5",
+        "topic": "dependency github.com/robfig/cron/v3",
+        "question": "Which crate replaces github.com/robfig/cron/v3 (used by 1 unit)?",
+        "recommendation": "Research it against primary sources into rust/research/github.com-robfig-cron-v3.md before porting what uses it"
+      },
+      {
+        "id": "D6",
+        "topic": "dependency golang.org/x/term",
+        "question": "Which crate replaces golang.org/x/term (used by 1 unit)?",
+        "recommendation": "Research it against primary sources into rust/research/golang.org-x-term.md before porting what uses it"
+      },
+      {
+        "id": "D7",
+        "topic": "dependency github.com/mattn/go-runewidth",
+        "question": "Which crate replaces github.com/mattn/go-runewidth (declared, no unit imports it)?",
+        "recommendation": "Research it against primary sources into rust/research/github.com-mattn-go-runewidth.md before porting what uses it"
+      },
+      {
+        "id": "D8",
+        "topic": "dependency github.com/testcontainers/testcontainers-go",
+        "question": "Which crate replaces github.com/testcontainers/testcontainers-go (declared, no unit imports it)?",
+        "recommendation": "Research it against primary sources into rust/research/github.com-testcontainers-testcontainers-go.md before porting what uses it"
+      },
+      {
+        "id": "D9",
+        "topic": "dependency golang.org/x/sys",
+        "question": "Which crate replaces golang.org/x/sys (declared, no unit imports it)?",
+        "recommendation": "Research it against primary sources into rust/research/golang.org-x-sys.md before porting what uses it"
+      }
+    ]
+  }
+}
