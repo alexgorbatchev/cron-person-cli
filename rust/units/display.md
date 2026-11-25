@@ -1,6 +1,6 @@
 ---
 created_on: 2026-11-25 08:08
-last_modified: 2026-11-25 08:08
+last_modified: 2026-11-25 08:38
 status: current
 ---
 
@@ -35,5 +35,17 @@ The only excluded source files are unmodified rust-anything-generated FFI/JSON t
 The recorded bridge benchmark is slower than the compiled Go formatter: FormatPath 43.528→1,083.071 ns, FormatErrorText 75.145→1,361.737 ns, PathBytes 230.590→1,934.275 ns, ErrorBytes 266.476→819.931 ns. These measurements include FFI/JSON overhead and include the expanded Windows cleaner. They do not establish standalone application performance. Measure actual callers before cutover.
 
 ## Remaining acceptance
+
+The library entry point is `src/entry.rs`. Its default `bridge` feature retains
+the generated C exports and JSON dispatcher. Native Rust dependents select
+`default-features = false` to expose `port` without those exports; this fixes
+the duplicate C symbols encountered when linking multiple generated units.
+The lexical `clean_path` byte API is public for configuration path reuse.
+The actual native configuration and filelock libraries link and execute in
+one consumer alongside the default display bridge. The renewed default gate
+passes, and first-party coverage remains 98.69% lines / 95.12% functions.
+Ignored `.state/rust-display-feature-*` and `.state/rust-native-consumer.log`
+retain the reports. This is native library compatibility, not application
+command wiring.
 
 Wire real application callers after their dependent commands are ported; preserve the temporary original switch until lift. Do not label a no-op dispatch as wiring. Run native macOS/Windows comparisons, including HOME/USERPROFILE encoding. Test the selected final MSRV, carry the license into packaged artifacts, and rerun final coverage/bench and whole-app replay. The generated gate covers the reference adapter boundary only.

@@ -84,7 +84,7 @@ fn volume_len(path: &[u8], windows: bool) -> usize {
 }
 
 // Preserve filepath.Clean's lexical volume and relative-path rules, including Windows.
-fn clean_path(home: &[u8], windows: bool) -> Vec<u8> {
+pub fn clean_path(home: &[u8], windows: bool) -> Vec<u8> {
     let separator = if windows { b'\\' } else { b'/' };
     let volume = volume_len(home, windows);
     let input = &home[volume..];
