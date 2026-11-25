@@ -15,5 +15,15 @@
     "status",
     "task"
   ],
-  "units": []
+  "units": [
+    {
+      "name": "hook",
+      "crate": "hook-rs",
+      "path": "../hook-rs",
+      "commands": [
+        "hook"
+      ],
+      "switch": "RUST_ANYTHING_UNIT_HOOK"
+    }
+  ]
 }

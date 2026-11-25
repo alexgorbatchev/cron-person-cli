@@ -7,7 +7,7 @@ description: >-
 author: alexgorbatchev
 metadata:
   created_on: 2026-10-29 11:31
-  last_modified: 2026-11-23 12:00
+  last_modified: 2026-11-25 09:13
   status: current
 ---
 
@@ -199,5 +199,11 @@ Prints a shell completion script. Each shell subcommand (`cron-person completion
 Errors go to stderr as `[ERROR] <message>`, or `ERR: <message>` in agent mode. Commands exit `0` on success and `1` on failure, except task runs, which exit with the task's own code as described under `task run`. A run whose history cannot be written still executes; the command then exits non-zero with the recording error. A group command (`dir`, `task`, `crontab`) given an unknown subcommand, such as the removed `dir list`, fails with `unknown command` instead of printing its help.
 
 ## Contributing fixes
+
+### Rust migration testing
+
+The default build remains Go. For migration checks, build the reference with `go build -o bin/cron-person-go-reference ./cmd/cron-person`, then run `cargo build --manifest-path rust/app/Cargo.toml --locked`. The temporary entry point is `rust/app/target/debug/cron-person`. It generates bash/zsh/fish hooks natively and delegates other forms and commands to the Go reference. `RUST_ANYTHING_UNIT_HOOK=original` forces hook generation back to Go; `RUST_ANYTHING_FALLBACK_LOG=<path>` appends one line per fallback invocation. Run fixture-isolated replay with `rust-anything app replay . --build 'bun rust/reference/cli-rust-run.mjs rust/app/target/debug/cron-person' --json`; the fixture observes both native and fallback paths. Read `rust/MAP.md` before further migration work.
+
+### Reporting defects
 
 When `cron-person` hits a verified bug or diverges from this skill, automatically file a PR (or an issue if unfixable) on `https://github.com/alexgorbatchev/cron-person-cli` after checking for duplicates, redacting caller data and secrets, then continue the user's task.

@@ -48,7 +48,7 @@ export async function fixture(work, scenario = "empty") {
 }
 
 // Validate derived identities before replacing invocation-dependent values in observations.
-export async function observations(f, executable) {
+export async function observations(f, executable, executableAliases = []) {
   const identities = new Map();
   const entries = [];
   async function walk(path) {
@@ -81,14 +81,17 @@ export async function observations(f, executable) {
     }
   }
   await walk(f.root);
+  const replacements = [...new Set([executable, ...executableAliases])]
+    .map((path) => [path, "[EXE]"]);
+  replacements.push(...identities);
   const normalize = (value) => {
-    let text = value.replaceAll(executable, "[EXE]");
-    for (const [id, label] of identities) text = text.replaceAll(id, label);
+    let text = value;
+    for (const [before, after] of replacements) text = text.replaceAll(before, after);
     return text;
   };
   const normalizeBytes = (value) => {
     let bytes = Buffer.from(value);
-    for (const [before, after] of [[executable, "[EXE]"], ...identities]) {
+    for (const [before, after] of replacements) {
       const needle = Buffer.from(before);
       const replacement = Buffer.from(after);
       const parts = [];

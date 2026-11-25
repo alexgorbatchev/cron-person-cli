@@ -1,12 +1,12 @@
 ---
 created_on: 2026-11-25 08:08
-last_modified: 2026-11-25 08:08
+last_modified: 2026-11-25 09:13
 status: current
 ---
 
 # Application characterization boundary
 
-This ledger identifies what the migration's recordings prove for implementers. The Go application remains the default build. The temporary Rust entry point delegates all application behavior to Go.
+This ledger identifies what the migration's recordings prove for implementers. The Go application remains the default build. The temporary Rust entry point runs shell generation natively; unported commands still delegate to Go.
 
 ## Reference and reproducibility
 
@@ -21,12 +21,12 @@ bun rust/reference/cli-inputs.mjs
 rust-anything app record . --inputs rust/reference/cli-inputs.jsonl --normalize timestamps --timeout 8 --name cron-person --json -- bun rust/reference/cli-run.mjs bin/cron-person-go-reference
 rust-anything app replay . --json
 cargo build --manifest-path rust/app/Cargo.toml --locked
-rust-anything app replay . --build rust/app/target/debug/cron-person --json
+rust-anything app replay . --build 'bun rust/reference/cli-rust-run.mjs rust/app/target/debug/cron-person' --json
 rust-anything app replay rust/http-baseline --json
 rust-anything app replay rust/http-baseline --build 'bun ../reference/http-run.mjs ../../rust/app/target/debug/cron-person {port}' --json
 ```
 
-The Rust entry point already invokes the CLI fixture adapter as its fallback; wrapping it again would seed the same fixture twice. The HTTP harness supplies its outer isolation and signals passthrough to that fallback.
+The fixture adapter wraps the entire Rust entry point, so native and fallback cases observe the same isolated files and byte streams. The Rust fallback directly runs the Go reference. The Rust adapter additionally normalizes the exact Go build path when unported commands name their executable; it does not broaden task/run identity normalization. The HTTP harness independently supplies its isolation.
 
 ## Measured evidence
 
@@ -39,6 +39,10 @@ The Rust entry point already invokes the CLI fixture adapter as its fallback; wr
 | HTTP Rust entry replay | 337/337, Go serves every route | 0.310 s |
 | Existing Go suite, including display reference tests | `just test` passes | 0.442 s (mostly cached) |
 | Go static analysis | `just vet` passes | 0.292 s |
+
+The table above is the original all-fallback checkpoint. After native hook generation and fixture-boundary integration, original replay passes 556/556 (3.04 s), the per-unit kill switch passes 556/556 with all 556 fallbacks (2.19 s), and final native replay passes 556/556 with 553 fallbacks (2.35 s). HTTP remains 337/337 (0.32 s), entirely Go-served. Final application tests pass three process tests (0.32 s command, 0.06 s test execution), clippy passes (0.14 s), and required `just test` / `just vet` pass (7.55 s / 0.56 s, with cached packages). These are migration checkpoints, not standalone-runtime acceptance.
+
+Native application process tests verify exact bash/zsh/fish generation, supported `--` separation, fallback for unported help/error/argument forms, the kill switch, eight agent-mode variants for real `/dev/full` write failures, and Unix SIGPIPE termination. Application coverage is 186/202 lines (92.08%) and 14/14 functions (100%), excluding tests and including unexecuted application source. Native hook export remains unported.
 
 CLI coverage includes human and agent help at 40/80/unset widths; version and skill; hooks and parser failures; authorization changes and missing, modified, orphaned and corrupt records; config errors; crontab generation/sync/uninstall; task environment, exit failures and invalid stdout/stderr bytes; history/log limits and errors. File observations include contents, modes, links and derived task/run identity assertions.
 

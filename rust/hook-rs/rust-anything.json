@@ -1,0 +1,68 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "../..",
+  "unit": "rust/reference/hook/",
+  "language": "go",
+  "kind": "ffi",
+  "crate_name": "hook-rs",
+  "exports": [
+    {
+      "name": "GenerateHookScript",
+      "file": "rust/reference/hook/hook.go",
+      "line": 12,
+      "params": [
+        {
+          "name": "shell",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        },
+        {
+          "name": "binary",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false,
+      "native_return": "(string, error)",
+      "prototype": "func GenerateHookScript(shell, binary string) (string, error)"
+    },
+    {
+      "name": "GenerateHookBytes",
+      "file": "rust/reference/hook/hook.go",
+      "line": 17,
+      "params": [
+        {
+          "name": "shell",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        },
+        {
+          "name": "binary",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false,
+      "native_return": "(string, error)",
+      "prototype": "func GenerateHookBytes(shell, binary string) (string, error)"
+    }
+  ],
+  "classes": [],
+  "js_only": []
+}
