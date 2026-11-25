@@ -1,0 +1,68 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "../..",
+  "unit": "rust/reference/crontab/crontab.go",
+  "language": "go",
+  "kind": "ffi",
+  "crate_name": "crontab-rs",
+  "exports": [
+    {
+      "name": "Text",
+      "file": "rust/reference/crontab/crontab.go",
+      "line": 20,
+      "params": [
+        {
+          "name": "operation",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        },
+        {
+          "name": "existing",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        },
+        {
+          "name": "managed",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false,
+      "native_return": "(string, error)",
+      "prototype": "func Text(operation, existing, managed string) (string, error)"
+    },
+    {
+      "name": "Process",
+      "file": "rust/reference/crontab/crontab.go",
+      "line": 90,
+      "params": [
+        {
+          "name": "input",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false,
+      "native_return": "(string, error)",
+      "prototype": "func Process(input string) (string, error)"
+    }
+  ],
+  "classes": [],
+  "js_only": []
+}
