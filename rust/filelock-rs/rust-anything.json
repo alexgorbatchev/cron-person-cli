@@ -1,0 +1,33 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "../..",
+  "unit": "rust/reference/filelock/",
+  "language": "go",
+  "kind": "ffi",
+  "crate_name": "filelock-rs",
+  "exports": [
+    {
+      "name": "Scenario",
+      "file": "rust/reference/filelock/filelock.go",
+      "line": 31,
+      "params": [
+        {
+          "name": "name",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false,
+      "native_return": "(string, error)",
+      "prototype": "func Scenario(name string) (string, error)"
+    }
+  ],
+  "classes": [],
+  "js_only": []
+}

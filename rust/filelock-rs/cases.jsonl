@@ -1,0 +1,62 @@
+{"args":["tab\tseparated"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["src/a/b.ts"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["trailing."],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["straße"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["hello"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["a.b.c日本語のテキスト"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["hello world"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["😀"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["a😀b😀c"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["é"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["./x/**/*.json"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["line1\nline2"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["{name} has {count} items"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["İstanbul"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["a:b:c"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["{name} has {count} items./x/**/*.json"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["ns:key.path"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["emoji 👍🏽 mix"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["emoji 👍🏽 mixab"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["ünïcödé"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["ünïcödékey_name-1"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["emoji 👍🏽 mixİstanbul"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["./x/**/*.jsonünïcödé"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["a..b"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["a.b.c"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["  padded  a:b:c"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":[""],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["trailing.﻿bom"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["日本語のテキスト"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["a"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["héllo wörld"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["👍🏽 thumbs"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["日本語"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["ılık ırmak"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["👨‍👩‍👧 family"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["a b"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["ΣΊΣΥΦΟΣ"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["a😀b"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["﻿bom"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["a²b x½ y①"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["aⅠb Ⅻ"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["a𐐀b 𝐀bc"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["कि ٣٤"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["contention"],"fn":"Scenario","ok":"[\"ok\",\"file is locked\",\"ok\",\"ok\",\"file is locked\",\"ok\"]"}
+{"args":["close"],"fn":"Scenario","ok":"[\"ok\",\"file is locked\",\"ok\",\"ok\",\"os:9\",\"ok\"]"}
+{"args":["release"],"fn":"Scenario","ok":"[\"ok\",\"file is locked\",\"ok\",\"ok\",\"ok\"]"}
+{"args":["double-release"],"fn":"Scenario","ok":"[\"ok\",\"file is locked\",\"ok\",\"ok\",\"ok\",\"os:9\",\"file already closed\"]"}
+{"args":["missing-parent"],"fn":"Scenario","ok":"[\"os:2\"]"}
+{"args":["directory"],"fn":"Scenario","ok":"[\"os:21\"]"}
+{"args":["nul"],"fn":"Scenario","ok":"[\"os:22\"]"}
+{"args":["closed"],"fn":"Scenario","ok":"[\"ok\",\"os:9\",\"os:9\",\"os:9\"]"}
+{"args":["read-only"],"fn":"Scenario","ok":"[\"ok\",\"ok\"]"}
+{"args":["retained"],"fn":"Scenario","ok":"[\"ok\",\"file is locked\",\"ok\",\"ok\",\"ok\",\"retained\"]"}
+{"args":["clone"],"fn":"Scenario","ok":"[\"ok\",\"ok\",\"ok\"]"}
+{"args":["unknown"],"error":"unknown filelock scenario","fn":"Scenario"}
+{"args":["text-missing-parent"],"fn":"Scenario","ok":"open \u003cfixture\u003e/missing/lock: no such file or directory"}
+{"args":["text-directory"],"fn":"Scenario","ok":"open \u003cfixture\u003e: is a directory"}
+{"args":["text-nul"],"fn":"Scenario","ok":"open \u003cfixture\u003e/lock\u0000: invalid argument"}
+{"args":["text-closed"],"fn":"Scenario","ok":"bad file descriptor"}
+{"args":["text-double-release"],"fn":"Scenario","ok":"bad file descriptor\nclose \u003cfixture\u003e/lock: file already closed"}
+{"args":["text-close"],"error":"unknown error-text scenario","fn":"Scenario"}
+{"args":["text-non-utf8"],"fn":"Scenario","ok":"6f70656e203c666978747572653e2f6d697373696e672fff3a206e6f20737563682066696c65206f72206469726563746f7279"}
