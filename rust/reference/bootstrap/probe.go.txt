@@ -1,0 +1,39 @@
+package main
+
+import (
+    "encoding/hex"
+    "encoding/json"
+    "fmt"
+    "os"
+)
+
+type probeRequest struct {
+    Op string
+    Directory string
+    Executable string
+    Args []string
+    Source string
+    Dotfiles string
+    RemoveCwd bool
+}
+
+func main() {
+    var req probeRequest
+    if err := json.NewDecoder(os.Stdin).Decode(&req); err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(2) }
+    if req.RemoveCwd {
+        cwd, err := os.Getwd()
+        if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(2) }
+        if err := os.Remove(cwd); err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(2) }
+    }
+    var value string
+    var err error
+    switch req.Op {
+    case "command": value, err = commandOutput(req.Directory, req.Executable, req.Args...)
+    case "bootstrap": value, err = bootstrap(req.Source, req.Dotfiles)
+    case "run": err = run()
+    default: fmt.Fprintln(os.Stderr, "invalid operation"); os.Exit(2)
+    }
+    message := ""
+    if err != nil { message = err.Error() }
+    if err := json.NewEncoder(os.Stdout).Encode([2]string{hex.EncodeToString([]byte(value)), hex.EncodeToString([]byte(message))}); err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(2) }
+}

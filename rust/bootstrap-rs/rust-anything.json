@@ -1,0 +1,33 @@
+{
+  "schema": "rust-anything/bridge@1",
+  "root": "../..",
+  "unit": "rust/reference/bootstrap/bootstrap.go",
+  "language": "go",
+  "kind": "ffi",
+  "crate_name": "bootstrap-rs",
+  "exports": [
+    {
+      "name": "Scenario",
+      "file": "rust/reference/bootstrap/bootstrap.go",
+      "line": 84,
+      "params": [
+        {
+          "name": "input",
+          "ts_type": "string",
+          "optional": false,
+          "rest": false,
+          "native_type": "string"
+        }
+      ],
+      "returns": "string",
+      "is_async": false,
+      "is_generator": false,
+      "type_params": [],
+      "uses_instanceof": false,
+      "native_return": "(string, error)",
+      "prototype": "func Scenario(input string) (string, error)"
+    }
+  ],
+  "classes": [],
+  "js_only": []
+}
